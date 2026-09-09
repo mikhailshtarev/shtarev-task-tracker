@@ -1,5 +1,7 @@
+import AuthPage from './components/AuthPage';
+
 function App() {
-  return <main className="greeting">Привет</main>
+  return <AuthPage />;
 }
 
-export default App
+export default App;

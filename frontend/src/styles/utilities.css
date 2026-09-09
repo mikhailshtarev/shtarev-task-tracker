@@ -1,0 +1,29 @@
+/* Утилитарные классы */
+.glow-primary {
+  box-shadow: 0 0 10px rgba(102, 126, 234, 0.5),
+              0 0 20px rgba(102, 126, 234, 0.3);
+}
+
+.glow-success {
+  box-shadow: 0 0 10px rgba(76, 175, 80, 0.5),
+              0 0 20px rgba(76, 175, 80, 0.3);
+}
+
+.glow-error {
+  box-shadow: 0 0 10px rgba(244, 67, 54, 0.5),
+              0 0 20px rgba(244, 67, 54, 0.3);
+}
+
+.gradient-text {
+  background: linear-gradient(90deg, #f97316, #ec4899, #8b5cf6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradient-border {
+  border: 1px solid transparent;
+  background: linear-gradient(var(--bg-secondary), var(--bg-secondary)) padding-box,
+              linear-gradient(135deg, #667eea, #764ba2) border-box;
+  border-radius: 8px;
+}

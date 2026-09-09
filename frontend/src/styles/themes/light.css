@@ -1,0 +1,15 @@
+/* Светлая тема */
+[data-theme='light'] {
+  --bg-primary: #f5f5f5;
+  --bg-secondary: #ffffff;
+  --bg-input: #f0f0f0;
+  --text-primary: #212121;
+  --text-secondary: #757575;
+  --border-color: #e0e0e0;
+  --accent-primary: #1976d2;
+  --accent-hover: #1565c0;
+  --success: #388e3c;
+  --error: #d32f2f;
+  --warning: #ffa000;
+  --info: #1976d2;
+}

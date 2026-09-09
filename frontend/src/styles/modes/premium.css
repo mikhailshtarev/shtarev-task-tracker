@@ -1,0 +1,9 @@
+/* Премиум режим */
+[data-mode='premium'] {
+  --border-radius: 8px;
+  --shadow-sm: 0 2px 8px rgba(102, 126, 234, 0.2);
+  --shadow-md: 0 4px 16px rgba(102, 126, 234, 0.3);
+  --transition-speed: 250ms;
+  --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --glow-effect: 0 0 10px rgba(102, 126, 234, 0.5);
+}

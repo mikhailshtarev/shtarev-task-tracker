@@ -1,0 +1,15 @@
+/* Тёмная тема — по умолчанию */
+[data-theme='dark'] {
+  --bg-primary: #0d0d0d;
+  --bg-secondary: #1a1a1a;
+  --bg-input: #2a2a2a;
+  --text-primary: #ffffff;
+  --text-secondary: #a0a0a0;
+  --border-color: #333333;
+  --accent-primary: #4a90d9;
+  --accent-hover: #5ba0e9;
+  --success: #4caf50;
+  --error: #f44336;
+  --warning: #ffc107;
+  --info: #2196f3;
+}
