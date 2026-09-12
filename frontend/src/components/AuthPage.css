@@ -69,3 +69,52 @@
   flex-direction: column;
   gap: 0;
 }
+
+/* Сообщения */
+.auth-status {
+  margin-bottom: 16px;
+  color: var(--text-secondary);
+}
+
+.auth-success {
+  margin-bottom: 16px;
+  color: var(--text-primary);
+}
+
+.error-message {
+  margin-bottom: 16px;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--error);
+  background: var(--bg-input);
+  border: 1px solid var(--error);
+  border-radius: var(--border-radius);
+}
+
+.error-detail {
+  margin-top: 2px;
+  font-size: 12px;
+}
+
+.auth-links {
+  display: flex;
+  justify-content: center;
+  margin-top: 16px;
+  margin-bottom: 16px;
+}
+
+.app-loading {
+  width: 32px;
+  height: 32px;
+  margin: 40vh auto 0;
+  border: 3px solid var(--border-color);
+  border-top-color: var(--accent-primary);
+  border-radius: 50%;
+  animation: auth-loading-spin 0.8s linear infinite;
+}
+
+@keyframes auth-loading-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

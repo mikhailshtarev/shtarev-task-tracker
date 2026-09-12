@@ -4,3 +4,6 @@ out/
 **/target/
 *.iml
 node_modules/
+
+# Локальные конфиги с секретами
+**/application-local.yaml

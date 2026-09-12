@@ -7,7 +7,9 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>4.1.1</version>
+        <!-- Последний релиз-трейн Spring Cloud (2025.1.3) собран под Boot 4.0.8: под Boot 4.1 совместимой
+             версии Cloud ещё нет, поэтому gateway зафиксирован на 4.0.8 (auth остаётся на 4.1.1) -->
+        <version>4.0.8</version>
         <relativePath/>
     </parent>
 
@@ -19,18 +21,38 @@
 
     <properties>
         <java.version>25</java.version>
+        <spring-cloud.version>2025.1.3</spring-cloud.version>
     </properties>
 
     <dependencies>
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter</artifactId>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-gateway-server-webflux</artifactId>
         </dependency>
+        <!-- NimbusJwtDecoder: валидация access-токенов по JWKS auth-сервиса (раздел 6.7) -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-oauth2-jose</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
         </dependency>
     </dependencies>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-dependencies</artifactId>
+                <version>${spring-cloud.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <build>
         <plugins>
