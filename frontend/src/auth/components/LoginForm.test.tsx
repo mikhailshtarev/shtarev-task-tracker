@@ -147,4 +147,27 @@ describe('LoginForm', () => {
     }) as HTMLButtonElement;
     expect(submitButton.disabled).toBe(true);
   });
+
+  it('берёт значения из DOM при автозаполнении без React onChange', async () => {
+    const { fetchMock } = setupForm([
+      {
+        method: 'POST',
+        path: '/auth/login',
+        status: 401,
+        body: {
+          error: { code: 'INVALID_CREDENTIALS', message: 'Неверный email или пароль' },
+        },
+      },
+    ]);
+    const email = screen.getByLabelText('Email') as HTMLInputElement;
+    const password = screen.getByLabelText('Пароль') as HTMLInputElement;
+    const setNativeValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!;
+    setNativeValue.call(email, 'autofill@example.com');
+    setNativeValue.call(password, 'Password123');
+
+    fireEvent.submit(email.closest('form')!);
+
+    expect(await screen.findByText('Неверный email или пароль')).toBeTruthy();
+    expect(fetchMock.mock.calls.filter(([input]) => String(input).includes('/auth/login'))).toHaveLength(1);
+  });
 });

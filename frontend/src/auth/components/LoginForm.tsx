@@ -51,17 +51,23 @@ function LoginForm() {
     return () => window.clearInterval(timer);
   }, [lockUntil]);
 
-  const handleSubmit = async (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setApiError(null);
     setEmailNotConfirmed(false);
     setResendSent(false);
 
+    // Берём фактические значения полей: браузерное автозаполнение может
+    // изменить DOM, не вызвав React onChange.
+    const formData = new FormData(e.currentTarget);
+    const submittedEmail = String(formData.get('email') ?? '');
+    const submittedPassword = String(formData.get('password') ?? '');
+
     // Для входа проверяем только формат email и непустой пароль —
     // полная политика пароля применяется при регистрации.
     const errors = {
-      email: validateEmail(email) ?? undefined,
-      password: password ? undefined : 'Введите пароль',
+      email: validateEmail(submittedEmail) ?? undefined,
+      password: submittedPassword ? undefined : 'Введите пароль',
     };
     setFieldErrors(errors);
     if (errors.email || errors.password) {
@@ -70,7 +76,7 @@ function LoginForm() {
 
     setSubmitting(true);
     try {
-      await login(email, password);
+      await login(submittedEmail, submittedPassword);
       navigate('/dashboard', { replace: true });
     } catch (error) {
       if (error instanceof ApiError) {
@@ -111,6 +117,7 @@ function LoginForm() {
         </label>
         <input
           id="login-email"
+          name="email"
           type="email"
           className={`input ${fieldErrors.email ? 'error' : ''}`}
           placeholder="example@mail.ru"
@@ -125,6 +132,7 @@ function LoginForm() {
         </label>
         <input
           id="login-password"
+          name="password"
           type="password"
           className={`input ${fieldErrors.password ? 'error' : ''}`}
           placeholder="••••••••"

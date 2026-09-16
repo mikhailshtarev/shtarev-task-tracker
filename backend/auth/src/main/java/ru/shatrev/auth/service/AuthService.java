@@ -1,6 +1,8 @@
 package ru.shatrev.auth.service;
 
 import io.jsonwebtoken.Claims;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,6 +24,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -31,6 +34,7 @@ import java.util.UUID;
 @Service
 public class AuthService {
 
+    private static final Logger log = LoggerFactory.getLogger(AuthService.class);
     private static final int PASSWORD_HISTORY_LIMIT = 5;
     private static final int EMAIL_TOKEN_TTL_HOURS = 24;
     private static final int RESET_TOKEN_TTL_HOURS = 1;
@@ -48,6 +52,7 @@ public class AuthService {
     private final LoginAttemptService loginAttemptService;
     private final GoogleOAuth2Service googleOAuth2Service;
     private final RefreshTokenBlacklistService refreshTokenBlacklistService;
+    private final UserSettingsService userSettingsService;
 
     public AuthService(UserRepository userRepository,
                        PasswordHistoryRepository passwordHistoryRepository,
@@ -61,7 +66,8 @@ public class AuthService {
                        EmailService emailService,
                        LoginAttemptService loginAttemptService,
                        GoogleOAuth2Service googleOAuth2Service,
-                       RefreshTokenBlacklistService refreshTokenBlacklistService) {
+                       RefreshTokenBlacklistService refreshTokenBlacklistService,
+                       UserSettingsService userSettingsService) {
         this.userRepository = userRepository;
         this.passwordHistoryRepository = passwordHistoryRepository;
         this.refreshTokenBlacklistRepository = refreshTokenBlacklistRepository;
@@ -75,6 +81,7 @@ public class AuthService {
         this.loginAttemptService = loginAttemptService;
         this.googleOAuth2Service = googleOAuth2Service;
         this.refreshTokenBlacklistService = refreshTokenBlacklistService;
+        this.userSettingsService = userSettingsService;
     }
 
     // ---------- Регистрация и подтверждение email ----------
@@ -102,6 +109,8 @@ public class AuthService {
         history.setUser(user);
         history.setPasswordHash(user.getPassword());
         passwordHistoryRepository.save(history);
+
+        userSettingsService.createDefaults(user);
 
         String token = tokenGenerator.generate();
         createEmailConfirmationToken(user, token);
@@ -183,6 +192,7 @@ public class AuthService {
             user.setName(profile.name());
             user.setConfirmed(true);
             user = userRepository.saveAndFlush(user);
+            userSettingsService.createDefaults(user);
         } else if (user.getPassword() != null) {
             throw new ApiException("EMAIL_CONFLICT", 409, "Email уже зарегистрирован. Войдите через email");
         }
@@ -250,6 +260,24 @@ public class AuthService {
     @Transactional(readOnly = true)
     public User getUserById(UUID id) {
         return userRepository.findById(id).orElseThrow(ApiException::unauthorized);
+    }
+
+    /**
+     * Обновление профиля (F-3, раздел 4.1 системного описания):
+     * пустое имя или null — очистить, иначе — сохранить с trim.
+     */
+    @Transactional
+    public User updateProfile(UUID userId, String name) {
+        User user = getUserById(userId);
+        String normalized = name == null ? null : name.trim();
+        if (normalized != null && normalized.length() > 100) {
+            throw ApiException.validation("Проверьте правильность заполнения полей",
+                    List.of(Map.of("field", "name", "message", "Имя должно содержать не более 100 символов")));
+        }
+        user.setName(normalized == null || normalized.isEmpty() ? null : normalized);
+        User saved = userRepository.save(user);
+        log.info("Профиль пользователя {} обновлён", userId);
+        return saved;
     }
 
     // ---------- Смена и сброс пароля ----------

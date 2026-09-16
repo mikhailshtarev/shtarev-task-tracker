@@ -12,6 +12,7 @@ JWT access/refresh токены (RS256, single-use refresh), подтвержд�
 | --- | --- |
 | `AUTH_DB_URL` | JDBC URL PostgreSQL, например `jdbc:postgresql://localhost:5432/auth` |
 | `AUTH_DB_USER`, `AUTH_DB_PASSWORD` | Учётная запись БД |
+| `AUTH_REDIS_URL` | URL Redis для кэша настроек (по умолчанию `redis://localhost:6379`) |
 | `AUTH_JWT_KID` | Идентификатор текущего ключа подписи (`kid`) |
 | `AUTH_JWT_PRIVATE_KEY` | Текущий приватный RSA-ключ (PEM, PKCS#8) |
 | `AUTH_JWT_PUBLIC_KEY` | Текущий публичный RSA-ключ (PEM, X.509) |

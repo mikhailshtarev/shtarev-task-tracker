@@ -56,6 +56,40 @@ describe('ProtectedRoute', () => {
     expect(screen.queryByText('SecretDashboard')).toBeNull();
   });
 
+  it.each(['/profile', '/settings'])('FE-11: гость на %s — редирект на /login', async (path) => {
+    vi.spyOn(redirectHandler, 'go').mockImplementation(() => {});
+    stubFetch([
+      {
+        method: 'POST',
+        path: '/auth/refresh',
+        status: 401,
+        body: {
+          error: { code: 'INVALID_REFRESH_TOKEN', message: 'Токен обновления недействителен' },
+        },
+      },
+    ]);
+    render(
+      <AuthProvider>
+        <MemoryRouter initialEntries={[path]}>
+          <Routes>
+            <Route
+              path={path}
+              element={
+                <ProtectedRoute>
+                  <div>ProtectedPage</div>
+                </ProtectedRoute>
+              }
+            />
+            <Route path="/login" element={<div>LoginScreen</div>} />
+          </Routes>
+        </MemoryRouter>
+      </AuthProvider>,
+    );
+
+    expect(await screen.findByText('LoginScreen')).toBeTruthy();
+    expect(screen.queryByText('ProtectedPage')).toBeNull();
+  });
+
   it('F-17: isAuthLoading — редиректа нет', async () => {
     const fetchMock = vi.fn(async () => new Promise<Response>(() => {}));
     vi.stubGlobal('fetch', fetchMock);

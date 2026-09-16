@@ -21,15 +21,22 @@ function RegisterForm() {
   const [registered, setRegistered] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = async (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setApiError(null);
 
+    // Берём фактические значения полей: браузерное автозаполнение может
+    // изменить DOM, не вызвав React onChange.
+    const formData = new FormData(e.currentTarget);
+    const submittedEmail = String(formData.get('email') ?? '');
+    const submittedPassword = String(formData.get('password') ?? '');
+    const submittedPasswordConfirm = String(formData.get('passwordConfirm') ?? '');
+
     const errors = {
-      email: validateEmail(email) ?? undefined,
-      password: validatePassword(password) ?? undefined,
+      email: validateEmail(submittedEmail) ?? undefined,
+      password: validatePassword(submittedPassword) ?? undefined,
       passwordConfirm:
-        passwordConfirm === password ? undefined : 'Пароли не совпадают',
+        submittedPasswordConfirm === submittedPassword ? undefined : 'Пароли не совпадают',
     };
     setFieldErrors(errors);
     if (errors.email || errors.password || errors.passwordConfirm) {
@@ -38,7 +45,7 @@ function RegisterForm() {
 
     setSubmitting(true);
     try {
-      await register(email, password);
+      await register(submittedEmail, submittedPassword);
       setRegistered(true);
     } catch (error) {
       if (error instanceof ApiError) {
@@ -76,6 +83,7 @@ function RegisterForm() {
         </label>
         <input
           id="reg-email"
+          name="email"
           type="email"
           className={`input ${fieldErrors.email ? 'error' : ''}`}
           placeholder="example@mail.ru"
@@ -90,6 +98,7 @@ function RegisterForm() {
         </label>
         <input
           id="reg-password"
+          name="password"
           type="password"
           className={`input ${fieldErrors.password ? 'error' : ''}`}
           placeholder="••••••••"
@@ -104,6 +113,7 @@ function RegisterForm() {
         </label>
         <input
           id="reg-password-confirm"
+          name="passwordConfirm"
           type="password"
           className={`input ${fieldErrors.passwordConfirm ? 'error' : ''}`}
           placeholder="••••••••"

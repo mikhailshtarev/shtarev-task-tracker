@@ -588,6 +588,8 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 | `/google-callback` | GoogleCallbackPage | Все (валидация `state`, обмен `code`) |
 | `/change-password` | ChangePasswordForm | Авторизованные |
 | `/dashboard` | Dashboard | Авторизованные |
+| `/profile` | ProfilePage | Авторизованные |
+| `/settings` | SettingsPage | Авторизованные |
 | `/*` | NotFound | Все |
 
 ---

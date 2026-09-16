@@ -6,7 +6,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { authService, type User } from '../services/authService';
+import { authService, type User, type UserProfile } from '../services/authService';
 import { clearAccessToken, setAccessToken } from '../utils/tokenManager';
 import { refreshAccessToken } from '../../api/refreshInterceptor';
 
@@ -24,6 +24,7 @@ export interface AuthContextValue {
   forgotPassword: (email: string) => Promise<void>;
   resetPassword: (token: string, password: string) => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  updateProfile: (name: string | null) => Promise<UserProfile>;
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null);
@@ -117,6 +118,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const updateProfile = useCallback(async (name: string | null) => {
+    const profile = await authService.updateProfile(name);
+    setUser(profile);
+    return profile;
+  }, []);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       accessToken,
@@ -132,6 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       forgotPassword,
       resetPassword,
       changePassword,
+      updateProfile,
     }),
     [
       accessToken,
@@ -146,6 +154,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       forgotPassword,
       resetPassword,
       changePassword,
+      updateProfile,
     ],
   );
 

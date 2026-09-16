@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -19,13 +20,17 @@ import ru.shatrev.auth.dto.request.LoginRequest;
 import ru.shatrev.auth.dto.request.RegisterRequest;
 import ru.shatrev.auth.dto.request.ResendConfirmationRequest;
 import ru.shatrev.auth.dto.request.ResetPasswordRequest;
+import ru.shatrev.auth.dto.request.UpdateProfileRequest;
+import ru.shatrev.auth.dto.request.UpdateSettingsRequest;
 import ru.shatrev.auth.dto.response.AuthResponse;
 import ru.shatrev.auth.dto.response.MeResponse;
 import ru.shatrev.auth.dto.response.MessageResponse;
+import ru.shatrev.auth.dto.response.UserSettingsResponse;
 import ru.shatrev.auth.entity.User;
 import ru.shatrev.auth.security.JwtAuthenticationFilter;
 import ru.shatrev.auth.service.AuthService;
 import ru.shatrev.auth.service.CookieService;
+import ru.shatrev.auth.service.UserSettingsService;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -33,10 +38,13 @@ public class AuthController {
 
     private final AuthService authService;
     private final CookieService cookieService;
+    private final UserSettingsService userSettingsService;
 
-    public AuthController(AuthService authService, CookieService cookieService) {
+    public AuthController(AuthService authService, CookieService cookieService,
+                          UserSettingsService userSettingsService) {
         this.authService = authService;
         this.cookieService = cookieService;
+        this.userSettingsService = userSettingsService;
     }
 
     @PostMapping("/register")
@@ -75,6 +83,23 @@ public class AuthController {
     public ResponseEntity<MeResponse> me() {
         User user = authService.getUserById(JwtAuthenticationFilter.currentUserId());
         return ResponseEntity.ok(new MeResponse(user.getId(), user.getEmail(), user.getName()));
+    }
+
+    @PutMapping("/me")
+    public ResponseEntity<MeResponse> updateMe(@Valid @RequestBody UpdateProfileRequest request) {
+        User user = authService.updateProfile(JwtAuthenticationFilter.currentUserId(), request.name());
+        return ResponseEntity.ok(new MeResponse(user.getId(), user.getEmail(), user.getName()));
+    }
+
+    @GetMapping("/settings")
+    public ResponseEntity<UserSettingsResponse> settings() {
+        return ResponseEntity.ok(userSettingsService.get(JwtAuthenticationFilter.currentUserId()));
+    }
+
+    @PutMapping("/settings")
+    public ResponseEntity<UserSettingsResponse> updateSettings(
+            @Valid @RequestBody UpdateSettingsRequest request) {
+        return ResponseEntity.ok(userSettingsService.update(JwtAuthenticationFilter.currentUserId(), request));
     }
 
     @PostMapping("/refresh")
@@ -131,4 +156,5 @@ public class AuthController {
         }
         return request.getRemoteAddr();
     }
+
 }

@@ -569,6 +569,28 @@ CREATE INDEX idx_login_attempts_endpoint_ip ON login_attempts (endpoint, ip_addr
 
 ---
 
+### 4.6.1. PUT `/api/v1/auth/me`
+
+Обновляет отображаемое имя текущего пользователя. Требует Bearer access token.
+
+**Request body:** `{ "name": "Иван" }`. Значение `null` или пустая строка очищает имя; после trim допускается от 0 до 100 символов.
+
+**Responses:** `200 OK` с объектом профиля (`id`, `email`, `name`); `400 VALIDATION_ERROR` при превышении длины; `401 UNAUTHORIZED` без действительного токена.
+
+---
+
+### 4.6.2. GET `/api/v1/auth/settings`
+
+Возвращает настройки текущего пользователя. Требует Bearer access token. По умолчанию: `hours`, 25 минут, игровой режим выключен, `budgetHourCost = 5`; базовый опыт всегда равен 5 и не является пользовательской настройкой. Ответ кэшируется в Redis по ключу `settings:{userId}` на 15 минут.
+
+---
+
+### 4.6.3. PUT `/api/v1/auth/settings`
+
+Полностью заменяет настройки текущего пользователя. Все поля обязательны: `estimationUnit` (`hours` или `pomodoros`), `pomodoroMinutes` (5–120, шаг 5), `gameModeEnabled`, `budgetHourCost` (1–1000). Возвращает актуальный объект настроек (`200 OK`) или единый `400 VALIDATION_ERROR`; после успешного обновления ключ Redis удаляется. Базовый опыт за час фиксирован на 5 и в запрос не входит. Оба endpoint используют `userId` только из `sub` токена.
+
+---
+
 ### 4.7. POST `/api/v1/auth/refresh`
 
 Обновление access токена.
@@ -900,6 +922,8 @@ DispatcherServlet
     ├── /api/v1/auth/refresh → публичный (проверяет cookie)
     ├── /api/v1/auth/logout → публичный (проверяет cookie)
     ├── /api/v1/auth/me → требует Bearer token
+    ├── PUT /api/v1/auth/me → требует Bearer token
+    ├── /api/v1/auth/settings → требует Bearer token
     ├── /api/v1/auth/change-password → требует Bearer token
     ├── /api/v1/auth/.well-known/jwks.json → публичный
     └── /api/v1/** (остальные сервисы) → требует Bearer token

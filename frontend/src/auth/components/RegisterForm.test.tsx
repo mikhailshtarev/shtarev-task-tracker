@@ -93,4 +93,27 @@ describe('RegisterForm', () => {
     const emailInput = screen.getByLabelText('Email') as HTMLInputElement;
     expect(emailInput.className).toContain('error');
   });
+
+  it('берёт значения из DOM при автозаполнении без React onChange', async () => {
+    const { fetchMock } = setupForm([
+      {
+        method: 'POST',
+        path: '/auth/register',
+        status: 201,
+        body: { message: 'Проверьте email для подтверждения' },
+      },
+    ]);
+    const email = screen.getByLabelText('Email') as HTMLInputElement;
+    const password = screen.getByLabelText('Пароль') as HTMLInputElement;
+    const passwordConfirm = screen.getByLabelText('Подтверждение пароля') as HTMLInputElement;
+    const setNativeValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!;
+    setNativeValue.call(email, 'autofill@example.com');
+    setNativeValue.call(password, 'SecurePass1');
+    setNativeValue.call(passwordConfirm, 'SecurePass1');
+
+    fireEvent.submit(email.closest('form')!);
+
+    expect(await screen.findByText('Проверьте email для подтверждения')).toBeTruthy();
+    expect(fetchMock.mock.calls.filter(([input]) => String(input).includes('/auth/register'))).toHaveLength(1);
+  });
 });

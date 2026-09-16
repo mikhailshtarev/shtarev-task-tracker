@@ -1,10 +1,22 @@
 import { request } from '../../api/client';
 import { authorizedRequest } from '../../api/refreshInterceptor';
 
-export interface User {
+export interface UserProfile {
   id: string;
   email: string;
   name: string | null;
+}
+
+// Совместимый алиас для компонентов авторизации F-2.
+export type User = UserProfile;
+
+export type EstimationUnit = 'hours' | 'pomodoros';
+
+export interface UserSettings {
+  estimationUnit: EstimationUnit;
+  pomodoroMinutes: number;
+  gameModeEnabled: boolean;
+  budgetHourCost: number;
 }
 
 export interface TokenResponse {
@@ -45,6 +57,24 @@ export const authService = {
 
   me(): Promise<User> {
     return authorizedRequest<User>('/auth/me');
+  },
+
+  updateProfile(name: string | null): Promise<UserProfile> {
+    return authorizedRequest<UserProfile>('/auth/me', {
+      method: 'PUT',
+      body: JSON.stringify({ name }),
+    });
+  },
+
+  getSettings(): Promise<UserSettings> {
+    return authorizedRequest<UserSettings>('/auth/settings');
+  },
+
+  updateSettings(settings: UserSettings): Promise<UserSettings> {
+    return authorizedRequest<UserSettings>('/auth/settings', {
+      method: 'PUT',
+      body: JSON.stringify(settings),
+    });
   },
 
   refresh(): Promise<TokenResponse> {
