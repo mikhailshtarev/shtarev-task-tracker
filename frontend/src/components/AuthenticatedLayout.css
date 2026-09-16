@@ -6,7 +6,6 @@
 .app-header {
   display: flex;
   align-items: center;
-  gap: 24px;
   min-height: 64px;
   padding: 12px 24px;
   background: var(--bg-secondary);
@@ -20,19 +19,50 @@
 }
 
 .app-navigation {
-  display: flex;
-  align-items: center;
-  gap: 16px;
+  display: grid;
+  gap: 8px;
 }
 
 .app-navigation a {
+  display: block;
+  padding: 10px 12px;
   color: var(--text-secondary);
   font-weight: 500;
+  border-radius: var(--border-radius);
 }
 
 .app-navigation a.active,
 .app-navigation a:hover {
   color: var(--accent-primary);
+  background: var(--bg-input);
+}
+
+.app-account-navigation {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.app-account-navigation a {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.app-account-navigation a.active,
+.app-account-navigation a:hover {
+  color: var(--accent-primary);
+}
+
+.app-body {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  min-height: calc(100vh - 65px);
+}
+
+.app-sidebar {
+  padding: 24px 16px;
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border-color);
 }
 
 .app-account {
@@ -125,6 +155,118 @@
   color: var(--text-secondary);
 }
 
+.branches-toolbar {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.branches-search {
+  flex: 1;
+}
+
+.branches-notice {
+  margin-bottom: 16px;
+  color: var(--success);
+}
+
+.branch-form-card {
+  margin-bottom: 24px;
+}
+
+.branch-form-actions,
+.branch-details-actions,
+.dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.branches-list {
+  display: grid;
+  gap: 12px;
+  list-style: none;
+}
+
+.branch-card {
+  padding: 16px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-sm);
+}
+
+.branch-card-link {
+  display: block;
+  color: var(--text-primary);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.branches-empty-state {
+  display: grid;
+  gap: 16px;
+}
+
+.branches-empty-state .settings-section-title {
+  margin-bottom: 0;
+}
+
+.branches-load-more {
+  margin-top: 16px;
+  text-align: center;
+}
+
+.branch-details-card {
+  display: grid;
+  gap: 16px;
+}
+
+.branch-placeholder-title {
+  color: var(--text-primary);
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.branch-placeholder-description {
+  color: var(--text-secondary);
+}
+
+.branch-rename-section {
+  padding-top: 24px;
+  border-top: 1px solid var(--border-color);
+}
+
+.dialog-backdrop {
+  position: fixed;
+  z-index: 10;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgb(0 0 0 / 50%);
+}
+
+.dialog-card {
+  width: min(100%, 440px);
+  padding: 24px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-md);
+}
+
+.dialog-title {
+  color: var(--text-primary);
+  font-size: 20px;
+}
+
+.dialog-description {
+  margin: 12px 0 24px;
+  color: var(--text-secondary);
+}
+
 @media (max-width: 680px) {
   .app-header {
     align-items: flex-start;
@@ -133,17 +275,45 @@
     padding: 12px 16px;
   }
 
+  .app-body {
+    display: block;
+  }
+
+  .app-sidebar {
+    padding: 8px 16px;
+    border-right: 0;
+    border-bottom: 1px solid var(--border-color);
+  }
+
   .app-navigation {
-    order: 3;
+    display: flex;
     width: 100%;
     overflow-x: auto;
   }
 
+  .app-navigation a {
+    flex: 0 0 auto;
+  }
+
+  .app-account-navigation {
+    order: 3;
+    width: 100%;
+    justify-content: flex-end;
+  }
+
   .app-account {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
     margin-left: auto;
   }
 
   .app-user-name {
     max-width: 140px;
+  }
+
+  .branches-toolbar {
+    align-items: stretch;
+    flex-direction: column;
   }
 }

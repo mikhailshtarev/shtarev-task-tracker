@@ -27,8 +27,14 @@ spring:
               uri: ${TASKS_SERVICE_URL:http://localhost:8082}
               predicates:
                 - Path=/api/v1/tasks/**
+            - id: branches
+              uri: ${TASKS_SERVICE_URL:http://localhost:8082}
+              predicates:
+                - Path=/api/v1/branches,/api/v1/branches/**
 
 gateway:
+  internal:
+    tasks-hmac-key: ${TASKS_INTERNAL_HMAC_KEY}
   # /api/v1/auth/** полностью публичен на гейтвее — правила доступа применяет сервис auth
   public-paths:
     - /api/v1/auth/**
