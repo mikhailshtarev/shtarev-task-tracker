@@ -134,6 +134,97 @@ class BranchIntegrationTest {
         }
     }
 
+    @Test
+    void nestedBranchesValidateParentDepthAndArchiveWholeSubtree() throws Exception {
+        UUID owner = UUID.randomUUID();
+        UUID other = UUID.randomUUID();
+        UUID root = createdId(send(owner, "POST", BASE, "{\"name\":\"Корень\"}"));
+        UUID foreign = createdId(send(other, "POST", BASE, "{\"name\":\"Чужой\"}"));
+        assertEquals(404, send(owner, "POST", BASE, branchBody("Нет доступа", foreign)).statusCode());
+        UUID current = root;
+        UUID child = null;
+        for (int depth = 2; depth <= 7; depth++) {
+            var response = send(owner, "POST", BASE, branchBody("Уровень " + depth, current));
+            assertEquals(201, response.statusCode(), response.body());
+            assertEquals(depth, json.readTree(response.body()).get("depth").asInt());
+            assertEquals(current.toString(), json.readTree(response.body()).get("parentId").asText());
+            current = createdId(response);
+            if (depth == 2) child = current;
+        }
+        assertEquals(400, send(owner, "POST", BASE, branchBody("Восьмой", current)).statusCode());
+        assertEquals(400, send(owner, "PUT", BASE + "/" + root, branchBody("Перемещение", child)).statusCode());
+        UUID plan = createdId(send(owner, "POST", BASE + "/" + child + "/plans", "{\"name\":\"План\"}"));
+        assertEquals(204, send(owner, "POST", BASE + "/" + root + "/archive", null).statusCode());
+        Timestamp archivedAt = jdbc.queryForObject("SELECT archived_at FROM branches WHERE id = ?", Timestamp.class, root);
+        assertEquals(archivedAt, jdbc.queryForObject("SELECT archived_at FROM branches WHERE id = ?", Timestamp.class, current));
+        assertEquals(archivedAt, jdbc.queryForObject("SELECT archived_at FROM work_plans WHERE id = ?", Timestamp.class, plan));
+        assertEquals(404, send(owner, "POST", BASE, branchBody("Архивный", child)).statusCode());
+        assertEquals(1, jdbc.queryForObject("SELECT count(*) FROM audit_events WHERE entity_id = ? AND action = 'archived'",
+                Integer.class, child));
+    }
+
+    @Test
+    void navigationTreeLoadsOneLevelWithOwnerScopedCursor() throws Exception {
+        UUID owner = UUID.randomUUID();
+        UUID other = UUID.randomUUID();
+        UUID root = createdId(send(owner, "POST", BASE, "{\"name\":\"Работа\"}"));
+        UUID child = createdId(send(owner, "POST", BASE, branchBody("Клиент", root)));
+        UUID plan = createdId(send(owner, "POST", BASE + "/" + root + "/plans", "{\"name\":\"План\"}"));
+        createdId(send(other, "POST", BASE, "{\"name\":\"Чужой\"}"));
+        String tree = "/api/v1/navigation/tree";
+        var roots = json.readTree(send(owner, "GET", tree, null).body());
+        assertEquals(1, roots.get("items").size());
+        assertEquals(root.toString(), roots.get("items").get(0).get("id").asText());
+        assertTrue(roots.get("items").get(0).get("hasChildren").asBoolean());
+        var first = json.readTree(send(owner, "GET", tree + "?parentType=branch&parentId=" + root + "&limit=1", null).body());
+        assertEquals(child.toString(), first.get("items").get(0).get("id").asText());
+        String cursor = first.get("nextCursor").asText();
+        var second = json.readTree(send(owner, "GET", tree + "?parentType=branch&parentId=" + root
+                + "&limit=1&cursor=" + cursor, null).body());
+        assertEquals(plan.toString(), second.get("items").get(0).get("id").asText());
+        assertEquals("work_plan", second.get("items").get(0).get("type").asText());
+        assertTrue(second.get("nextCursor").isNull());
+        assertEquals(400, send(other, "GET", tree + "?parentType=branch&parentId=" + root
+                + "&cursor=" + cursor, null).statusCode());
+        assertEquals(404, send(other, "GET", tree + "?parentType=branch&parentId=" + root, null).statusCode());
+        assertEquals(0, json.readTree(send(owner, "GET", tree + "?parentType=work_plan&parentId=" + plan, null)
+                .body()).get("items").size());
+        assertEquals(400, send(owner, "GET", tree + "?parentType=branch", null).statusCode());
+        assertEquals(400, send(owner, "GET", tree + "?limit=501", null).statusCode());
+    }
+
+    @Test
+    void failedDescendantAuditRollsBackEntireArchive() throws Exception {
+        UUID owner = UUID.randomUUID();
+        UUID root = createdId(send(owner, "POST", BASE, "{\"name\":\"Корень\"}"));
+        UUID child = createdId(send(owner, "POST", BASE, branchBody("Потомок", root)));
+        UUID plan = createdId(send(owner, "POST", BASE + "/" + child + "/plans", "{\"name\":\"План\"}"));
+        jdbc.execute("CREATE FUNCTION f51_reject_child_archive() RETURNS trigger AS $$ "
+                + "BEGIN IF NEW.entity_type = 'branch' AND NEW.entity_id = '" + child + "' "
+                + "AND NEW.action = 'archived' THEN RAISE EXCEPTION 'test audit failure'; END IF; "
+                + "RETURN NEW; END; $$ LANGUAGE plpgsql");
+        jdbc.execute("CREATE TRIGGER f51_reject_child_archive BEFORE INSERT ON audit_events "
+                + "FOR EACH ROW EXECUTE FUNCTION f51_reject_child_archive()");
+        try {
+            assertEquals(500, send(owner, "POST", BASE + "/" + root + "/archive", null).statusCode());
+        } finally {
+            jdbc.execute("DROP TRIGGER f51_reject_child_archive ON audit_events");
+            jdbc.execute("DROP FUNCTION f51_reject_child_archive()");
+        }
+        assertNull(jdbc.queryForObject("SELECT archived_at FROM branches WHERE id = ?", Timestamp.class, root));
+        assertNull(jdbc.queryForObject("SELECT archived_at FROM branches WHERE id = ?", Timestamp.class, child));
+        assertNull(jdbc.queryForObject("SELECT archived_at FROM work_plans WHERE id = ?", Timestamp.class, plan));
+    }
+
+    private UUID createdId(HttpResponse<String> response) throws Exception {
+        assertEquals(201, response.statusCode(), response.body());
+        return UUID.fromString(json.readTree(response.body()).get("id").asText());
+    }
+
+    private static String branchBody(String name, UUID parentId) {
+        return "{\"name\":\"" + name + "\",\"parentId\":\"" + parentId + "\"}";
+    }
+
     private HttpResponse<String> send(UUID owner, String method, String path, String body) throws Exception {
         String rawPath = path.split("\\?", 2)[0];
         String time = Long.toString(Instant.now().getEpochSecond());

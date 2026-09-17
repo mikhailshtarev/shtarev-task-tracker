@@ -16,7 +16,7 @@ public class BranchPageReader {
     }
 
     public List<BranchResponse> read(UUID userId, String query, BranchCursor cursor, int limit) {
-        String sql = "SELECT id, name, created_at, updated_at FROM branches "
+        String sql = "SELECT id, name, parent_id, depth, created_at, updated_at FROM branches "
                 + "WHERE user_id = ? AND archived_at IS NULL "
                 + "AND (? = '' OR position(lower(?) in lower(name)) > 0) "
                 + (cursor == null ? "" : "AND (created_at, id) < (?, ?) ")
@@ -26,6 +26,7 @@ public class BranchPageReader {
                 : new Object[]{userId, query, query, Timestamp.from(cursor.createdAt()), cursor.id(), limit};
         return jdbc.query(sql, (rs, row) -> new BranchResponse(
                 rs.getObject("id", UUID.class), rs.getString("name"),
+                rs.getObject("parent_id", UUID.class), rs.getShort("depth"),
                 rs.getTimestamp("created_at").toInstant(), rs.getTimestamp("updated_at").toInstant()), args);
     }
 }

@@ -31,7 +31,7 @@ public class TasksUnauthorizedResponseFilter implements GlobalFilter, Ordered {
         String path = exchange.getRequest().getURI().getRawPath();
         if (exchange.getAttribute(JwtValidationFilter.USER_ID_ATTRIBUTE) == null
                 || !(path.startsWith("/api/v1/branches") || path.startsWith("/api/v1/tasks")
-                || path.startsWith("/api/v1/work-plans"))) {
+                || path.startsWith("/api/v1/work-plans") || path.equals("/api/v1/navigation/tree"))) {
             return chain.filter(exchange);
         }
         var response = new ServerHttpResponseDecorator(exchange.getResponse()) {

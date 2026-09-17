@@ -1,0 +1,199 @@
+openapi: 3.1.0
+info:
+  title: F-5.1 Дерево проектов, планов и задач API
+  version: 1.0.0
+  description: Контракт read-model левой навигации и создания дочерних веток.
+servers:
+  - url: /
+security:
+  - bearerAuth: []
+paths:
+  /api/v1/navigation/tree:
+    get:
+      summary: Получить дерево активных веток, планов и задач
+      operationId: getNavigationTree
+      parameters:
+        - name: parentType
+          in: query
+          schema:
+            type: string
+            enum: [branch, work_plan]
+          description: Тип раскрываемого родителя; при отсутствии parentId возвращаются только корневые проекты.
+        - name: parentId
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Идентификатор раскрываемого проекта или плана.
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+            default: 500
+        - name: cursor
+          in: query
+          schema:
+            type: string
+            maxLength: 512
+      responses:
+        '200':
+          description: Страница узлов дерева текущего пользователя.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TreePage'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '502':
+          $ref: '#/components/responses/UpstreamUnavailable'
+  /api/v1/branches:
+    post:
+      summary: Создать корневую или дочернюю ветку
+      operationId: createNestedBranch
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BranchInput'
+      responses:
+        '201':
+          description: Ветка создана.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Branch'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '502':
+          $ref: '#/components/responses/UpstreamUnavailable'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    BranchInput:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 100
+        parentId:
+          type: [string, 'null']
+          format: uuid
+          description: Активная родительская ветка; null создаёт корневой узел.
+    Branch:
+      type: object
+      required: [id, name, parentId, depth, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        parentId:
+          type: [string, 'null']
+          format: uuid
+        depth:
+          type: integer
+          minimum: 1
+          maximum: 7
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    TreeNode:
+      type: object
+      required: [id, type, parentId, name, depth, hasChildren]
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [branch, work_plan, task]
+        parentId:
+          type: [string, 'null']
+          format: uuid
+        name:
+          type: string
+        depth:
+          type: integer
+          minimum: 1
+          maximum: 9
+        hasChildren:
+          type: boolean
+    TreePage:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/TreeNode'
+        nextCursor:
+          type: [string, 'null']
+          maxLength: 512
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, details]
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            details:
+              type: [array, 'null']
+    ErrorDetail:
+      type: object
+      properties:
+        field:
+          type: string
+        message:
+          type: string
+  responses:
+    ValidationError:
+      description: Ошибка валидации входных данных.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Unauthorized:
+      description: Требуется авторизация.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Родительский узел не найден или недоступен.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    UpstreamUnavailable:
+      description: Сервис временно недоступен.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'

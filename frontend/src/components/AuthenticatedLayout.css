@@ -37,6 +37,155 @@
   background: var(--bg-input);
 }
 
+.navigation-tree {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.navigation-tree-list {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.navigation-tree-item {
+  min-width: 0;
+}
+
+.navigation-tree-item > .navigation-tree-list {
+  margin-left: 16px;
+  padding-left: 8px;
+  border-left: 1px solid var(--border-color);
+}
+
+.navigation-tree-row {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 4px;
+}
+
+.navigation-tree-toggle,
+.navigation-tree-add {
+  display: inline-grid;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  color: var(--text-secondary);
+  font-size: 18px;
+  line-height: 1;
+  background: transparent;
+  border: 0;
+  border-radius: var(--border-radius);
+}
+
+.navigation-tree-toggle:hover,
+.navigation-tree-add:hover,
+.navigation-tree-toggle:focus-visible,
+.navigation-tree-add:focus-visible {
+  color: var(--accent-primary);
+  background: var(--bg-input);
+}
+
+.navigation-tree-spacer,
+.navigation-tree-icon {
+  flex: 0 0 24px;
+  width: 24px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.navigation-tree-link,
+.navigation-tree-task {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.navigation-tree-link {
+  flex: 1;
+  padding: 4px 0;
+}
+
+.navigation-tree-task {
+  flex: 1;
+  color: var(--text-secondary);
+}
+
+.navigation-tree-menu {
+  display: grid;
+  margin: 4px 0 4px 52px;
+  overflow: hidden;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+}
+
+.navigation-tree-menu button {
+  padding: 8px 12px;
+  color: var(--text-primary);
+  text-align: left;
+  background: transparent;
+  border: 0;
+}
+
+.navigation-tree-menu button:hover,
+.navigation-tree-menu button:focus-visible {
+  color: var(--accent-primary);
+  background: var(--bg-secondary);
+}
+
+.navigation-tree-form {
+  margin: 8px 0 8px 28px;
+  padding: 12px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+}
+
+.navigation-tree-form .branch-form-actions {
+  margin-top: 12px;
+}
+
+.navigation-tree-create-root {
+  width: 100%;
+  padding: 10px 12px;
+  color: var(--accent-primary);
+  font-weight: 500;
+  text-align: left;
+  background: transparent;
+  border: 1px dashed var(--border-color);
+  border-radius: var(--border-radius);
+}
+
+.navigation-tree-create-root:hover,
+.navigation-tree-create-root:focus-visible {
+  border-color: var(--accent-primary);
+  background: var(--bg-input);
+}
+
+.navigation-tree-loading,
+.navigation-tree-empty {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.navigation-tree-error .error-message {
+  margin-bottom: 8px;
+  font-size: 12px;
+}
+
+.navigation-tree-more {
+  justify-self: start;
+}
+
 .app-account-navigation {
   display: flex;
   align-items: center;
@@ -55,14 +204,40 @@
 
 .app-body {
   display: grid;
-  grid-template-columns: 220px minmax(0, 1fr);
+  grid-template-columns: var(--sidebar-width, 260px) minmax(0, 1fr);
   min-height: calc(100vh - 65px);
 }
 
 .app-sidebar {
+  position: relative;
+  min-width: 0;
   padding: 24px 16px;
   background: var(--bg-secondary);
   border-right: 1px solid var(--border-color);
+}
+
+.app-sidebar-resizer {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  right: -5px;
+  bottom: 0;
+  width: 10px;
+  padding: 0;
+  cursor: col-resize;
+  background: transparent;
+  border: 0;
+}
+
+.app-sidebar-resizer:hover,
+.app-sidebar-resizer:focus-visible {
+  background: var(--accent-primary);
+  opacity: 0.55;
+}
+
+body.is-resizing-sidebar {
+  cursor: col-resize;
+  user-select: none;
 }
 
 .app-account {
@@ -86,9 +261,20 @@
   padding: 32px 0;
 }
 
-.page-title {
+.app-content-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
   margin-bottom: 24px;
+}
+
+.page-title {
   color: var(--text-primary);
+}
+
+.page-header-actions {
+  flex: 0 0 auto;
 }
 
 .settings-card {
@@ -316,6 +502,15 @@
     overflow-x: auto;
   }
 
+  .app-sidebar-resizer {
+    display: none;
+  }
+
+  .navigation-tree {
+    min-width: 240px;
+    margin-top: 8px;
+  }
+
   .app-navigation a {
     flex: 0 0 auto;
   }
@@ -340,5 +535,14 @@
   .branches-toolbar {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .app-content-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .page-header-actions .btn {
+    width: 100%;
   }
 }
