@@ -66,7 +66,8 @@ class BranchIntegrationTest {
                 process.destroyForcibly();
                 return false;
             }
-            return process.exitValue() == 0;
+            String version = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8).trim();
+            return process.exitValue() == 0 && version.matches("[0-9]+\\.[0-9]+\\.[0-9]+.*");
         } catch (Exception e) {
             return false;
         }

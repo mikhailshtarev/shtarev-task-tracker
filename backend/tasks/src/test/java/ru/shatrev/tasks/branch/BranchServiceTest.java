@@ -1,6 +1,7 @@
 package ru.shatrev.tasks.branch;
 
 import org.junit.jupiter.api.Test;
+import ru.shatrev.tasks.workplan.WorkPlanCascade;
 
 import java.time.Instant;
 import java.util.List;
@@ -15,7 +16,8 @@ class BranchServiceTest {
     private final BranchRepository repository = mock(BranchRepository.class);
     private final BranchPageReader pages = mock(BranchPageReader.class);
     private final BranchAudit audit = mock(BranchAudit.class);
-    private final BranchService service = new BranchService(repository, pages, audit);
+    private final WorkPlanCascade cascade = mock(WorkPlanCascade.class);
+    private final BranchService service = new BranchService(repository, pages, audit, cascade);
 
     @Test
     void noOpRenameAndRepeatedArchiveDoNotUpdateOrAudit() {
@@ -31,6 +33,7 @@ class BranchServiceTest {
         Instant archivedAt = branch.getArchivedAt();
         service.archive(owner, branch.getId());
         assertEquals(archivedAt, branch.getArchivedAt());
+        verify(cascade, times(1)).archiveActive(owner, branch.getId(), archivedAt);
         verify(audit, times(1)).record(eq(owner), eq(branch.getId()), eq("archived"),
                 eq("archivedAt"), isNull(), anyString(), any(Instant.class));
         assertThrows(ApiFailure.class,

@@ -1,24 +1,24 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ApiError } from '../api/client';
 import { ErrorDisplay } from '../auth/components/ErrorDisplay';
 import { ArchiveConfirmDialog } from '../branches/ArchiveConfirmDialog';
-import { BranchForm } from '../branches/BranchForm';
-import { toBranchApiError } from '../branches/branchErrors';
 import { branchService, type Branch } from '../branches/branchService';
 import { isBranchId } from '../branches/branchValidation';
-import { BRANCH_STRINGS } from '../branches/strings';
 import AuthenticatedLayout from '../components/AuthenticatedLayout';
-import { WorkPlansList } from '../workPlans/WorkPlansList';
+import { WorkPlanForm } from '../workPlans/WorkPlanForm';
+import { toWorkPlanApiError } from '../workPlans/workPlanErrors';
+import { workPlanService, type WorkPlan } from '../workPlans/workPlanService';
+import { WORK_PLAN_STRINGS } from '../workPlans/strings';
 
 function isAbortError(error: unknown): boolean {
   return error instanceof Error && error.name === 'AbortError';
 }
 
-function BranchDetailsPage() {
-  const { branchId = '' } = useParams();
+function WorkPlanDetailsPage() {
+  const { planId = '' } = useParams();
   const navigate = useNavigate();
-  const location = useLocation();
+  const [plan, setPlan] = useState<WorkPlan | null>(null);
   const [branch, setBranch] = useState<Branch | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -27,24 +27,11 @@ function BranchDetailsPage() {
   const [showArchiveDialog, setShowArchiveDialog] = useState(false);
   const [archiving, setArchiving] = useState(false);
   const [reloadVersion, setReloadVersion] = useState(0);
-  const [notice, setNotice] = useState<string | null>(null);
   const archiveButtonRef = useRef<HTMLButtonElement>(null);
   const archivingRef = useRef(false);
 
-  const handleBranchNotFound = useCallback(() => {
-    setNotFound(true);
-  }, []);
-
   useEffect(() => {
-    const state = location.state as { notice?: string } | null;
-    if (state?.notice) {
-      setNotice(state.notice);
-      navigate(location.pathname, { replace: true, state: null });
-    }
-  }, [location.pathname, location.state, navigate]);
-
-  useEffect(() => {
-    if (!isBranchId(branchId)) {
+    if (!isBranchId(planId)) {
       setNotFound(true);
       setLoading(false);
       return;
@@ -52,34 +39,42 @@ function BranchDetailsPage() {
 
     const controller = new AbortController();
     setLoading(true);
+    setPlan(null);
     setBranch(null);
     setNotFound(false);
     setApiError(null);
-    void branchService
-      .getBranch(branchId, controller.signal)
-      .then((result) => setBranch(result))
-      .catch((error: unknown) => {
+
+    void (async () => {
+      try {
+        const workPlan = await workPlanService.getWorkPlan(planId, controller.signal);
+        const parentBranch = await branchService.getBranch(workPlan.branchId, controller.signal);
+        if (controller.signal.aborted) {
+          return;
+        }
+        setPlan(workPlan);
+        setBranch(parentBranch);
+      } catch (error) {
         if (isAbortError(error)) {
           return;
         }
         if (error instanceof ApiError && error.status === 404) {
           setNotFound(true);
         } else {
-          setApiError(toBranchApiError(error, BRANCH_STRINGS.loadError));
+          setApiError(toWorkPlanApiError(error, WORK_PLAN_STRINGS.loadError));
         }
-      })
-      .finally(() => {
+      } finally {
         if (!controller.signal.aborted) {
           setLoading(false);
         }
-      });
+      }
+    })();
 
     return () => controller.abort();
-  }, [branchId, reloadVersion]);
+  }, [planId, reloadVersion]);
 
   const handleRename = async (name: string) => {
-    const updated = await branchService.updateBranch(branchId, name);
-    setBranch(updated);
+    const updated = await workPlanService.updateWorkPlan(planId, name);
+    setPlan(updated);
     setShowRenameForm(false);
   };
 
@@ -92,21 +87,24 @@ function BranchDetailsPage() {
   };
 
   const handleArchive = async () => {
-    if (archivingRef.current) {
+    if (archivingRef.current || !plan) {
       return;
     }
     archivingRef.current = true;
     setArchiving(true);
     setApiError(null);
     try {
-      await branchService.archiveBranch(branchId);
-      navigate('/branches', { replace: true, state: { notice: BRANCH_STRINGS.archiveSuccess } });
+      await workPlanService.archiveWorkPlan(planId);
+      navigate(`/branches/${plan.branchId}`, {
+        replace: true,
+        state: { notice: WORK_PLAN_STRINGS.archiveSuccess },
+      });
     } catch (error) {
       if (error instanceof ApiError && error.status === 404) {
         setShowArchiveDialog(false);
         setNotFound(true);
       } else {
-        setApiError(toBranchApiError(error, BRANCH_STRINGS.archiveError));
+        setApiError(toWorkPlanApiError(error, WORK_PLAN_STRINGS.archiveError));
       }
     } finally {
       archivingRef.current = false;
@@ -116,36 +114,36 @@ function BranchDetailsPage() {
 
   if (loading) {
     return (
-      <AuthenticatedLayout title={BRANCH_STRINGS.detailsTitle}>
-        <p className="settings-loading" role="status">{BRANCH_STRINGS.loading}</p>
+      <AuthenticatedLayout title={WORK_PLAN_STRINGS.detailsTitle}>
+        <p className="settings-loading" role="status">{WORK_PLAN_STRINGS.loading}</p>
       </AuthenticatedLayout>
     );
   }
 
   if (notFound) {
     return (
-      <AuthenticatedLayout title={BRANCH_STRINGS.detailsTitle}>
+      <AuthenticatedLayout title={WORK_PLAN_STRINGS.detailsTitle}>
         <section className="settings-card branches-empty-state">
-          <h2 className="settings-section-title">{BRANCH_STRINGS.notFoundTitle}</h2>
-          <p>{BRANCH_STRINGS.notFoundDescription}</p>
+          <h2 className="settings-section-title">{WORK_PLAN_STRINGS.notFoundTitle}</h2>
+          <p>{WORK_PLAN_STRINGS.notFoundDescription}</p>
           <Link to="/branches" className="btn btn-secondary">
-            {BRANCH_STRINGS.backToBranchesAction}
+            {WORK_PLAN_STRINGS.backToBranchAction}
           </Link>
         </section>
       </AuthenticatedLayout>
     );
   }
 
-  if (!branch) {
+  if (!plan || !branch) {
     return (
-      <AuthenticatedLayout title={BRANCH_STRINGS.detailsTitle}>
+      <AuthenticatedLayout title={WORK_PLAN_STRINGS.detailsTitle}>
         <section className="settings-card branches-empty-state">
           <ErrorDisplay error={apiError} />
           <button type="button" className="btn btn-secondary" onClick={() => setReloadVersion((v) => v + 1)}>
-            {BRANCH_STRINGS.retryAction}
+            {WORK_PLAN_STRINGS.retryAction}
           </button>
           <Link to="/branches" className="btn btn-secondary">
-            {BRANCH_STRINGS.backToBranchesAction}
+            {WORK_PLAN_STRINGS.backToBranchAction}
           </Link>
         </section>
       </AuthenticatedLayout>
@@ -153,18 +151,25 @@ function BranchDetailsPage() {
   }
 
   return (
-    <AuthenticatedLayout title={branch.name}>
-      <section className="settings-card branch-details-card">
+    <AuthenticatedLayout title={plan.name}>
+      <section className="settings-card work-plan-details-card">
+        <p className="work-plan-parent">
+          <span>{WORK_PLAN_STRINGS.parentBranchLabel}: </span>
+          <Link to={`/branches/${branch.id}`}>{branch.name}</Link>
+        </p>
+        <p className="branch-placeholder-title">{WORK_PLAN_STRINGS.tasksPlaceholder}</p>
+        <p className="branch-placeholder-description">{WORK_PLAN_STRINGS.tasksDescription}</p>
+
         <ErrorDisplay error={apiError} />
 
         {showRenameForm ? (
-          <section className="branch-rename-section" aria-labelledby="rename-branch-title">
-            <h2 id="rename-branch-title" className="settings-section-title">
-              {BRANCH_STRINGS.renameTitle}
+          <section className="branch-rename-section" aria-labelledby="rename-work-plan-title">
+            <h2 id="rename-work-plan-title" className="settings-section-title">
+              {WORK_PLAN_STRINGS.renameTitle}
             </h2>
-            <BranchForm
-              initialName={branch.name}
-              submitLabel={BRANCH_STRINGS.saveAction}
+            <WorkPlanForm
+              initialName={plan.name}
+              submitLabel={WORK_PLAN_STRINGS.saveAction}
               onSubmit={handleRename}
               onCancel={() => setShowRenameForm(false)}
             />
@@ -172,7 +177,7 @@ function BranchDetailsPage() {
         ) : (
           <div className="branch-details-actions">
             <button type="button" className="btn btn-secondary" onClick={() => setShowRenameForm(true)}>
-              {BRANCH_STRINGS.renameTitle}
+              {WORK_PLAN_STRINGS.renameTitle}
             </button>
             <button
               ref={archiveButtonRef}
@@ -180,26 +185,20 @@ function BranchDetailsPage() {
               className="btn btn-danger"
               onClick={() => setShowArchiveDialog(true)}
             >
-              {BRANCH_STRINGS.archiveAction}
+              {WORK_PLAN_STRINGS.archiveAction}
             </button>
           </div>
         )}
       </section>
 
-      <WorkPlansList
-        branchId={branch.id}
-        notice={notice}
-        onBranchNotFound={handleBranchNotFound}
-      />
-
       <ArchiveConfirmDialog
         open={showArchiveDialog}
         submitting={archiving}
-        title={BRANCH_STRINGS.archiveDialogTitle}
-        description={BRANCH_STRINGS.archiveDialogDescription}
-        confirmLabel={BRANCH_STRINGS.archiveConfirmAction}
-        cancelLabel={BRANCH_STRINGS.cancelAction}
-        submittingLabel={BRANCH_STRINGS.loadingMore}
+        title={WORK_PLAN_STRINGS.archiveDialogTitle}
+        description={WORK_PLAN_STRINGS.archiveDialogDescription}
+        confirmLabel={WORK_PLAN_STRINGS.archiveConfirmAction}
+        cancelLabel={WORK_PLAN_STRINGS.cancelAction}
+        submittingLabel={WORK_PLAN_STRINGS.loadingMore}
         onConfirm={handleArchive}
         onCancel={closeArchiveDialog}
       />
@@ -207,4 +206,4 @@ function BranchDetailsPage() {
   );
 }
 
-export default BranchDetailsPage;
+export default WorkPlanDetailsPage;

@@ -61,6 +61,13 @@ class GatewayAccessIntegrationTest {
                 exchange.getResponseBody().write(body);
                 exchange.close();
             });
+            DOWNSTREAM.createContext("/api/v1/work-plans", exchange -> {
+                LAST_HEADERS.set(exchange.getRequestHeaders());
+                byte[] body = "internal rejection".getBytes(StandardCharsets.UTF_8);
+                exchange.sendResponseHeaders(401, body.length);
+                exchange.getResponseBody().write(body);
+                exchange.close();
+            });
             DOWNSTREAM.createContext("/api/v1/auth/me", exchange -> {
                 LAST_HEADERS.set(exchange.getRequestHeaders());
                 byte[] body = "auth".getBytes(StandardCharsets.UTF_8);
@@ -126,6 +133,25 @@ class GatewayAccessIntegrationTest {
     }
 
     @Test
+    void workPlanAndNestedRoutesCarryVerifiedContext() throws Exception {
+        UUID user = UUID.randomUUID();
+        for (String path : new String[]{"/api/v1/work-plans/" + UUID.randomUUID(),
+                "/api/v1/branches/" + UUID.randomUUID() + "/plans"}) {
+            LAST_HEADERS.set(null);
+            var response = call(path, token(user, "access"));
+            assertEquals(502, response.statusCode());
+            assertTrue(response.body().contains("UPSTREAM_UNAVAILABLE"));
+            assertEquals(user.toString(), LAST_HEADERS.get().getFirst("X-Internal-User-Id"));
+            assertNotNull(LAST_HEADERS.get().getFirst("X-Internal-Auth-Signature"));
+            assertNull(LAST_HEADERS.get().getFirst("Authorization"));
+        }
+        LAST_HEADERS.set(null);
+        assertEquals(401, call("/api/v1/work-plans/" + UUID.randomUUID(),
+                token(user, "refresh")).statusCode());
+        assertNull(LAST_HEADERS.get());
+    }
+
+    @Test
     void authRouteKeepsBearerAndStripsClientInternalHeaders() throws Exception {
         LAST_HEADERS.set(null);
         var response = HttpClient.newHttpClient().send(HttpRequest.newBuilder(
@@ -139,8 +165,12 @@ class GatewayAccessIntegrationTest {
     }
 
     private HttpResponse<String> call(String token) throws Exception {
+        return call("/api/v1/branches", token);
+    }
+
+    private HttpResponse<String> call(String path, String token) throws Exception {
         return HttpClient.newHttpClient().send(HttpRequest.newBuilder(
-                URI.create("http://127.0.0.1:" + port + "/api/v1/branches"))
+                URI.create("http://127.0.0.1:" + port + path))
                 .header("Authorization", "Bearer " + token)
                 .header("X-Internal-User-Id", "forged")
                 .header("X-Internal-Auth-Signature", "forged")

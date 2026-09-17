@@ -238,6 +238,31 @@
   border-top: 1px solid var(--border-color);
 }
 
+.work-plans-section {
+  margin-top: 24px;
+}
+
+.work-plan-details-card {
+  display: grid;
+  gap: 16px;
+}
+
+.work-plan-parent {
+  color: var(--text-secondary);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .dialog-backdrop {
   position: fixed;
   z-index: 10;

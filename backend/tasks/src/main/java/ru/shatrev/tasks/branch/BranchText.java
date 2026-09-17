@@ -26,7 +26,7 @@ public final class BranchText {
         return value;
     }
 
-    static String normalize(String raw) {
+    public static String normalize(String raw) {
         String value = Normalizer.normalize(raw, Normalizer.Form.NFC);
         int start = 0;
         int end = value.length();

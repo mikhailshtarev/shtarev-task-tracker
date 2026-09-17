@@ -2,6 +2,7 @@ package ru.shatrev.tasks.branch;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ru.shatrev.tasks.workplan.WorkPlanCascade;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -13,11 +14,14 @@ public class BranchService {
     private final BranchRepository branches;
     private final BranchPageReader pages;
     private final BranchAudit audit;
+    private final WorkPlanCascade workPlans;
 
-    public BranchService(BranchRepository branches, BranchPageReader pages, BranchAudit audit) {
+    public BranchService(BranchRepository branches, BranchPageReader pages, BranchAudit audit,
+                         WorkPlanCascade workPlans) {
         this.branches = branches;
         this.pages = pages;
         this.audit = audit;
+        this.workPlans = workPlans;
     }
 
     @Transactional(readOnly = true)
@@ -67,6 +71,7 @@ public class BranchService {
         if (branch.getArchivedAt() == null) {
             Instant now = now();
             branch.archive(now);
+            workPlans.archiveActive(userId, id, now);
             audit.record(userId, id, "archived", "archivedAt", null, now.toString(), now);
         }
     }

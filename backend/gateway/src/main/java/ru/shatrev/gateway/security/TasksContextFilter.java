@@ -33,7 +33,8 @@ public class TasksContextFilter implements GlobalFilter, Ordered {
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         UUID userId = exchange.getAttribute(JwtValidationFilter.USER_ID_ATTRIBUTE);
         String path = exchange.getRequest().getURI().getRawPath();
-        if (userId == null || !(path.startsWith("/api/v1/branches") || path.startsWith("/api/v1/tasks"))) {
+        if (userId == null || !(path.startsWith("/api/v1/branches") || path.startsWith("/api/v1/tasks")
+                || path.startsWith("/api/v1/work-plans"))) {
             return chain.filter(exchange);
         }
         String timestamp = Long.toString(Instant.now().getEpochSecond());

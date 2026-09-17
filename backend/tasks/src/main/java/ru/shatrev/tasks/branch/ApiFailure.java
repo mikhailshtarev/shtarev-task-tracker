@@ -25,6 +25,10 @@ public class ApiFailure extends RuntimeException {
         return new ApiFailure(HttpStatus.NOT_FOUND, "NOT_FOUND", "Ветка не найдена или недоступна", null);
     }
 
+    public static ApiFailure resourceNotFound() {
+        return new ApiFailure(HttpStatus.NOT_FOUND, "NOT_FOUND", "Ресурс не найден или недоступен", null);
+    }
+
     public HttpStatus status() { return status; }
     public String code() { return code; }
     public List<ApiError.Detail> details() { return details; }

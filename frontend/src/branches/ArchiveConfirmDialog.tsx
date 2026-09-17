@@ -1,9 +1,12 @@
 import { useEffect, useRef } from 'react';
-import { BRANCH_STRINGS } from './strings';
-
 interface ArchiveConfirmDialogProps {
   open: boolean;
   submitting: boolean;
+  title: string;
+  description: string;
+  confirmLabel: string;
+  cancelLabel: string;
+  submittingLabel: string;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -11,6 +14,11 @@ interface ArchiveConfirmDialogProps {
 export function ArchiveConfirmDialog({
   open,
   submitting,
+  title,
+  description,
+  confirmLabel,
+  cancelLabel,
+  submittingLabel,
   onConfirm,
   onCancel,
 }: ArchiveConfirmDialogProps) {
@@ -41,9 +49,9 @@ export function ArchiveConfirmDialog({
         }}
       >
         <h2 id="archive-dialog-title" className="dialog-title">
-          {BRANCH_STRINGS.archiveDialogTitle}
+          {title}
         </h2>
-        <p className="dialog-description">{BRANCH_STRINGS.archiveDialogDescription}</p>
+        <p className="dialog-description">{description}</p>
         <div className="dialog-actions">
           <button
             ref={cancelButtonRef}
@@ -52,7 +60,7 @@ export function ArchiveConfirmDialog({
             onClick={onCancel}
             disabled={submitting}
           >
-            {BRANCH_STRINGS.cancelAction}
+            {cancelLabel}
           </button>
           <button
             type="button"
@@ -60,7 +68,7 @@ export function ArchiveConfirmDialog({
             onClick={onConfirm}
             disabled={submitting}
           >
-            {submitting ? BRANCH_STRINGS.loadingMore : BRANCH_STRINGS.archiveConfirmAction}
+            {submitting ? submittingLabel : confirmLabel}
           </button>
         </div>
       </div>

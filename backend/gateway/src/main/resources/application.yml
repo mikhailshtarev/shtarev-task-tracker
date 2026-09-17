@@ -31,6 +31,10 @@ spring:
               uri: ${TASKS_SERVICE_URL:http://localhost:8082}
               predicates:
                 - Path=/api/v1/branches,/api/v1/branches/**
+            - id: work-plans
+              uri: ${TASKS_SERVICE_URL:http://localhost:8082}
+              predicates:
+                - Path=/api/v1/work-plans,/api/v1/work-plans/**
 
 gateway:
   internal:

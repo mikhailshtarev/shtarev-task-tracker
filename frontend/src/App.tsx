@@ -16,6 +16,7 @@ import ProfilePage from './pages/ProfilePage';
 import SettingsPage from './pages/SettingsPage';
 import BranchesPage from './pages/BranchesPage';
 import BranchDetailsPage from './pages/BranchDetailsPage';
+import WorkPlanDetailsPage from './pages/WorkPlanDetailsPage';
 
 // Авторизованного пользователя на страницах входа/регистрации
 // отправляем на дашборд (таблица роутинга, раздел 6 контракта).
@@ -126,6 +127,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <BranchDetailsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/work-plans/:planId"
+            element={
+              <ProtectedRoute>
+                <WorkPlanDetailsPage />
               </ProtectedRoute>
             }
           />

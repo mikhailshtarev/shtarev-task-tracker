@@ -56,7 +56,13 @@ describe('ProtectedRoute', () => {
     expect(screen.queryByText('SecretDashboard')).toBeNull();
   });
 
-  it.each(['/profile', '/settings', '/branches', '/branches/11111111-1111-4111-8111-111111111111'])('FE-11: гость на %s — редирект на /login', async (path) => {
+  it.each([
+    '/profile',
+    '/settings',
+    '/branches',
+    '/branches/11111111-1111-4111-8111-111111111111',
+    '/work-plans/11111111-1111-4111-8111-111111111111',
+  ])('FE-11: гость на %s — редирект на /login', async (path) => {
     vi.spyOn(redirectHandler, 'go').mockImplementation(() => {});
     stubFetch([
       {
