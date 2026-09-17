@@ -38,7 +38,7 @@
 - [x] `service/JwtService.java` — методы по разделу 6.1: `generateAccessToken` / `generateRefreshToken` (claims `sub`, `email`, `type`, `jti`, `iat`, `exp`; заголовок `kid`), `validateToken`, `getUserFromToken`, `getJtiFromToken`, `getIatFromToken`.
 - [x] `GET /api/v1/auth/.well-known/jwks.json` — публикация JWKS (раздел 4.13).
 - [x] `config/SecurityConfig.java` — правила доступа по схеме раздела 6.5: публичные/cookie/Bearer-эндпоинты; stateless-сессии.
-- [x] `security/JwtAuthenticationFilter.java` — валидация Bearer для `/api/v1/auth/me`, `/api/v1/auth/change-password` и остальных защищённых `/api/v1/**`.
+- [x] `security/JwtAuthenticationFilter.java` — валидация Bearer для `/api/v1/auth/me`, `/api/v1/auth/change-password` и остальных защищённых маршрутов `auth`; остальные сервисы не разбирают пользовательский JWT.
 - [x] `config/CorsConfig.java` — whitelist origins из окружения.
 - [x] CSRF (раздел 6.6): отключён для Bearer-запросов; для `/refresh` и `/logout` — проверка заголовка `Origin` против whitelist → `403 ORIGIN_NOT_ALLOWED`.
 
@@ -116,7 +116,7 @@ Cookie refreshToken везде: `HttpOnly; Secure; SameSite=Strict; Path=/; Max-
 | B-19 | Refresh: токен с `iat` раньше `tokens_valid_from` → 401 | Отзыв после смены пароля |
 | B-20 | Logout: jti в blacklist, cookie очищена (`Max-Age=0`); повторный refresh этим токеном → 401 | Как в разделе 4.8 |
 | B-21 | Change-password: неверный текущий → 400 `INVALID_CURRENT_PASSWORD`; совпадает с одним из последних 5 → 409 `PASSWORD_TOO_RECENT`; успех → 200, старые refresh отклонены (B-19) | Как в разделе 4.9 |
-| B-22 | Change-password/reset-password без Bearer / с неверным Bearer → 401 `UNAUTHORIZED` | Доступ только по токену |
+| B-22 | Change-password/me через Gateway без Bearer / с неверным Bearer → 401 `UNAUTHORIZED` | Защищённые маршруты `auth` требуют действительный access JWT, который проверяет сам `auth`; reset-password публичен и использует одноразовый токен |
 | B-23 | Google: замоканный обмен code → новый пользователь (`password = NULL`, `is_confirmed = true`); повторный вход → авторизация; email занят пароль-аккаунтом → 409 `EMAIL_CONFLICT` | Как в разделе 4.10 |
 | B-24 | Forgot-password: несуществующий email → 200 (ответ неотличим от успеха); найденный → токен в `password_reset_tokens` с TTL 1 ч | Без раскрытия регистрации |
 | B-25 | Reset-password: валидный токен → 200, вход новым паролем работает, старым — нет; повторное использование токена → 400; `tokens_valid_from` установлен | Как в разделе 4.12 |

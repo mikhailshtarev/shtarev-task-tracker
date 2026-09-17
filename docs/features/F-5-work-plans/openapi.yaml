@@ -1,0 +1,309 @@
+openapi: 3.1.1
+info:
+  title: F-5 Планы работ API
+  version: 1.0.0
+  description: Контракт управления планами работ в собственных активных ветках. Пустой план допустим.
+servers:
+  - url: /
+security:
+  - bearerAuth: []
+tags:
+  - name: WorkPlans
+paths:
+  /api/v1/branches/{branchId}/plans:
+    parameters:
+      - $ref: '#/components/parameters/BranchId'
+    get:
+      tags: [WorkPlans]
+      operationId: getWorkPlans
+      summary: Список и поиск активных планов ветки
+      description: |
+        Ветка должна быть активной и принадлежать текущему пользователю.
+        Порядок — createdAt DESC, id DESC. Поиск не учитывает регистр;
+        %, _ и символ экранирования трактуются буквально. Пустой после
+        нормализации q равен отсутствующему фильтру. cursor привязан к branchId
+        и нормализованному q с сохранением регистра. Новые записи перед курсором
+        видны после обновления списка с первой страницы.
+      parameters:
+        - name: limit
+          in: query
+          description: Число элементов на странице.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 50
+        - name: cursor
+          in: query
+          description: Непрозрачный nextCursor из предыдущего ответа для той же ветки и того же q.
+          schema:
+            type: string
+            maxLength: 512
+        - name: q
+          in: query
+          description: Подстрока названия; после нормализации не более 150 кодовых точек Unicode. Правило нормализации — в system-description.md, раздел 5.
+          schema:
+            type: string
+            x-normalizedMaxCodePoints: 150
+      responses:
+        '200':
+          description: Страница активных планов.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkPlanPage'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '502':
+          $ref: '#/components/responses/UpstreamUnavailable'
+    post:
+      tags: [WorkPlans]
+      operationId: createWorkPlan
+      summary: Создать план в активной ветке
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkPlanInput'
+      responses:
+        '201':
+          description: План создан.
+          headers:
+            Location:
+              description: Путь к созданному плану.
+              schema:
+                type: string
+                example: /api/v1/work-plans/535f5d9e-4533-4896-af28-8a2d129930ec
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkPlan'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '502':
+          $ref: '#/components/responses/UpstreamUnavailable'
+  /api/v1/work-plans/{planId}:
+    parameters:
+      - $ref: '#/components/parameters/PlanId'
+    get:
+      tags: [WorkPlans]
+      operationId: getWorkPlan
+      summary: Получить активный план
+      description: Архивированный, чужой или отсутствующий план и план в архивированной ветке дают 404.
+      responses:
+        '200':
+          description: Активный план.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkPlan'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '502':
+          $ref: '#/components/responses/UpstreamUnavailable'
+    put:
+      tags: [WorkPlans]
+      operationId: updateWorkPlan
+      summary: Переименовать активный план
+      description: Если нормализованное название не изменилось, updatedAt и аудит не меняются.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkPlanInput'
+      responses:
+        '200':
+          description: Актуальный план.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkPlan'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '502':
+          $ref: '#/components/responses/UpstreamUnavailable'
+  /api/v1/work-plans/{planId}/archive:
+    parameters:
+      - $ref: '#/components/parameters/PlanId'
+    post:
+      tags: [WorkPlans]
+      operationId: archiveWorkPlan
+      summary: Архивировать собственный план
+      description: |
+        Повторное архивирование собственного плана в активной ветке возвращает
+        204 без изменения времени и аудита. План в архивированной ветке, чужой
+        или отсутствующий план дают 404. После F-6 архивируются и задачи плана.
+      responses:
+        '204':
+          description: План архивирован или уже был архивирован.
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '502':
+          $ref: '#/components/responses/UpstreamUnavailable'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Gateway проверяет access JWT; tasks получает только подписанный внутренний userId без пользовательского токена.
+  parameters:
+    BranchId:
+      name: branchId
+      in: path
+      required: true
+      description: UUID ветки. Неверный формат — 400.
+      schema:
+        type: string
+        format: uuid
+    PlanId:
+      name: planId
+      in: path
+      required: true
+      description: UUID плана. Неверный формат — 400.
+      schema:
+        type: string
+        format: uuid
+  responses:
+    ValidationError:
+      description: Ошибка валидации UUID, тела, фильтра или курсора.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: VALIDATION_ERROR
+              message: Проверьте введённые данные
+              details:
+                - field: name
+                  message: Название должно содержать от 2 до 150 символов
+    Unauthorized:
+      description: Gateway обнаружил отсутствие или недействительность access token до вызова tasks.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: UNAUTHORIZED
+              message: Требуется авторизация
+              details: null
+    NotFound:
+      description: Ветка или план не найдены или недоступны.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: NOT_FOUND
+              message: Ресурс не найден или недоступен
+              details: null
+    UpstreamUnavailable:
+      description: После успешной проверки JWT сервис tasks отклонил внутренний контекст; Gateway не раскрывает причину клиенту.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: UPSTREAM_UNAVAILABLE
+              message: Сервис временно недоступен. Попробуйте позже
+              details: null
+  schemas:
+    WorkPlanInput:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 2
+          x-normalizedMinCodePoints: 2
+          x-normalizedMaxCodePoints: 150
+          description: После NFC и удаления краевых пробелов — 2–150 кодовых точек Unicode. Семантические границы задают x-normalizedMinCodePoints и x-normalizedMaxCodePoints. Правило нормализации — в system-description.md, раздел 5.
+          example: Тренировки
+    WorkPlan:
+      type: object
+      additionalProperties: false
+      required: [id, branchId, name, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        branchId:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 2
+          maxLength: 150
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    WorkPlanPage:
+      type: object
+      additionalProperties: false
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkPlan'
+        nextCursor:
+          type: [string, 'null']
+          maxLength: 512
+    ErrorDetail:
+      type: object
+      additionalProperties: false
+      required: [message]
+      properties:
+        field:
+          type: string
+        message:
+          type: string
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [error]
+      properties:
+        error:
+          type: object
+          additionalProperties: false
+          required: [code, message, details]
+          properties:
+            code:
+              type: string
+              enum: [VALIDATION_ERROR, UNAUTHORIZED, NOT_FOUND, UPSTREAM_UNAVAILABLE]
+            message:
+              type: string
+            details:
+              type: [array, 'null']
+              items:
+                $ref: '#/components/schemas/ErrorDetail'

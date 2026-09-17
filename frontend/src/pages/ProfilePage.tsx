@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useLayoutEffect, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { ApiError } from '../api/client';
 import { ErrorDisplay } from '../auth/components/ErrorDisplay';
@@ -14,7 +14,7 @@ function ProfilePage() {
   const [submitting, setSubmitting] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     setName(user?.name ?? '');
   }, [user?.name]);
 

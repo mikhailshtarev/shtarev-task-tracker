@@ -402,7 +402,7 @@ function clearAccessToken() {
 
 ### 3.2. Отправка access token
 
-Для защищённых запросов (не `/api/v1/auth/**`) использовать заголовок `Authorization`:
+Для всех защищённых запросов через Gateway, включая `/api/v1/auth/me`, `/api/v1/auth/settings`, `/api/v1/auth/change-password` и маршруты других сервисов, использовать заголовок `Authorization`. Публичные login/register/refresh/logout не требуют access JWT. Gateway сохраняет Bearer для `auth`, который сам его проверяет, но не пересылает Bearer другим сервисам:
 
 ```typescript
 const response = await fetch('/api/v1/tasks', {
@@ -591,6 +591,8 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 | `/profile` | ProfilePage | Авторизованные |
 | `/settings` | SettingsPage | Авторизованные |
 | `/*` | NotFound | Все |
+
+В авторизованном лейауте ссылки на основные рабочие разделы (дашборд, ветки и последующие разделы) находятся в левой боковой колонке. Ссылки «Профиль» и «Настройки» размещаются в правом верхнем углу шапки рядом с аккаунтом пользователя.
 
 ---
 

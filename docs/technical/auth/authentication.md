@@ -564,7 +564,7 @@ CREATE INDEX idx_login_attempts_endpoint_ip ON login_attempts (endpoint, ip_addr
 
 **Поведение:**
 
-1. Извлекает `user.id` из access token.
+1. Извлекает `user.id` из проверенного access JWT, переданного Gateway в `Authorization`.
 2. Возвращает `id`, `email` и `name` пользователя.
 
 ---
@@ -587,7 +587,7 @@ CREATE INDEX idx_login_attempts_endpoint_ip ON login_attempts (endpoint, ip_addr
 
 ### 4.6.3. PUT `/api/v1/auth/settings`
 
-Полностью заменяет настройки текущего пользователя. Все поля обязательны: `estimationUnit` (`hours` или `pomodoros`), `pomodoroMinutes` (5–120, шаг 5), `gameModeEnabled`, `budgetHourCost` (1–1000). Возвращает актуальный объект настроек (`200 OK`) или единый `400 VALIDATION_ERROR`; после успешного обновления ключ Redis удаляется. Базовый опыт за час фиксирован на 5 и в запрос не входит. Оба endpoint используют `userId` только из `sub` токена.
+Полностью заменяет настройки текущего пользователя. Все поля обязательны: `estimationUnit` (`hours` или `pomodoros`), `pomodoroMinutes` (5–120, шаг 5), `gameModeEnabled`, `budgetHourCost` (1–1000). Возвращает актуальный объект настроек (`200 OK`) или единый `400 VALIDATION_ERROR`; после успешного обновления ключ Redis удаляется. Базовый опыт за час фиксирован на 5 и в запрос не входит. Оба endpoint используют только `userId` из проверенного `sub` access JWT.
 
 ---
 
@@ -675,7 +675,7 @@ CREATE INDEX idx_login_attempts_endpoint_ip ON login_attempts (endpoint, ip_addr
 
 **Поведение:**
 
-1. Извлекает `user.id` из access token.
+1. Извлекает `user.id` из проверенного access JWT.
 2. Проверяет `currentPassword` через Argon2.
 3. Валидирует `newPassword`, проверяет, что он не совпадает с последними 5 паролями из `password_history`.
 4. Хеширует `newPassword`, обновляет `users.password`, добавляет хеш в `password_history` (оставляет последние 5 записей).
@@ -789,7 +789,7 @@ CREATE INDEX idx_login_attempts_endpoint_ip ON login_attempts (endpoint, ip_addr
 
 ### 4.13. GET `/api/v1/auth/.well-known/jwks.json`
 
-Публичный JWKS-эндпоинт для валидации access токенов другими сервисами (Gateway, Tasks, Notes и т. д.). См. раздел 6.7.
+Публичный JWKS-эндпоинт для Gateway, который проверяет пользовательские access JWT на маршрутах к `tasks` и другим не-auth сервисам. `auth` проверяет токены на своих маршрутах собственными ключами; `tasks` пользовательский JWT не получает. См. раздел 6.7.
 
 **Responses:**
 
@@ -866,14 +866,14 @@ backend/auth/
 
 | Метод | Описание |
 | --- | --- |
-| `generateAccessToken(User user)` | Создаёт JWT с claim'ами: `sub=user.id`, `email`, `jti=UUID`, `iat`, `exp` (15 мин); заголовок `kid` |
+| `generateAccessToken(User user)` | Создаёт JWT с claim'ами: `sub=user.id`, `email`, `type=access`, `jti=UUID`, `iat`, `exp` (15 мин); заголовок `kid` |
 | `generateRefreshToken(User user)` | Создаёт JWT с claim'ами: `sub=user.id`, `type=refresh`, `jti=UUID`, `iat`, `exp` (7 дней); заголовок `kid` |
-| `validateToken(String token)` | Проверяет подпись, срок действия |
-| `getUserFromToken(String token)` | Извлекает `user.id` из валидного токена |
-| `getJtiFromToken(String token)` | Извлекает `jti` для blacklist |
-| `getIatFromToken(String token)` | Извлекает `iat` для проверки `tokens_valid_from` |
+| `validateToken(String token)` | Проверяет подпись, срок действия и issuer; вызывающий код дополнительно проверяет `type=access` или `type=refresh` по сценарию |
+| `getUserFromToken(String token)` | Извлекает `user.id` из валидного токена после проверки его типа вызывающим кодом |
+| `getJtiFromToken(String token)` | Извлекает `jti` для blacklist refresh JWT |
+| `getIatFromToken(String token)` | Извлекает `iat` refresh JWT для проверки `tokens_valid_from` |
 
-Ролевой модели в первой версии нет (см. NFR 2.4) — токен содержит только `sub` и `email`.
+Ролевой модели в первой версии нет (см. NFR 2.4). `auth` сам проверяет access JWT на своих защищённых маршрутах; Gateway проверяет его для остальных сервисов.
 
 ### 6.2. Login Attempt Service
 
@@ -904,54 +904,31 @@ backend/auth/
 
 ### 6.5. Spring Security
 
-```
-HTTP Request
-    │
-    ▼
-JwtAuthenticationFilter (валидирует Bearer token там, где требуется)
-    │
-    ▼
-DispatcherServlet
-    ├── /api/v1/auth/register → публичный
-    ├── /api/v1/auth/login → публичный
-    ├── /api/v1/auth/confirm → публичный
-    ├── /api/v1/auth/resend-confirmation → публичный
-    ├── /api/v1/auth/google → публичный
-    ├── /api/v1/auth/forgot-password → публичный
-    ├── /api/v1/auth/reset-password → публичный
-    ├── /api/v1/auth/refresh → публичный (проверяет cookie)
-    ├── /api/v1/auth/logout → публичный (проверяет cookie)
-    ├── /api/v1/auth/me → требует Bearer token
-    ├── PUT /api/v1/auth/me → требует Bearer token
-    ├── /api/v1/auth/settings → требует Bearer token
-    ├── /api/v1/auth/change-password → требует Bearer token
-    ├── /api/v1/auth/.well-known/jwks.json → публичный
-    └── /api/v1/** (остальные сервисы) → требует Bearer token
-```
+На маршрутах `/api/v1/auth/**` Gateway сохраняет пользовательский Bearer и не проверяет JWT повторно. `JwtAuthenticationFilter` сервиса `auth` проверяет access JWT на защищённых `/me`, `/settings`, `/change-password` и других endpoint'ах `auth`, затем помещает `userId` из `sub` в локальный SecurityContext. Публичные `/register`, `/login`, `/confirm`, `/resend-confirmation`, `/google`, `/forgot-password`, `/reset-password`, `/refresh`, `/logout` и `/.well-known/jwks.json` не требуют access JWT; refresh/logout по-прежнему проверяют cookie и `Origin`. Отсутствующий или неверный Bearer на защищённом маршруте даёт `401`. Для остальных сервисов действует [общий контракт](../gateway-access-auth.md).
 
 ### 6.6. CSRF защита
 
 Принятое решение (первая версия, один инстанс):
 
-1. Все state-changing запросы к другим сервисам используют Bearer token — CSRF не применим (cookies не отправляются).
+1. Клиентские state-changing запросы к защищённым сервисам используют Bearer access JWT; Gateway передаёт его только в `auth`, а другим сервисам — подписанный контекст без cookie. CSRF к этим запросам не применим.
 2. Cookie-based эндпоинты (`/refresh`, `/logout`): refresh cookie имеет `SameSite=Strict`, что блокирует отправку cookie в кросс-сайтовых запросах.
 3. Дополнительно на `/refresh` и `/logout` сервер проверяет заголовок `Origin`: если заголовок присутствует и его origin отсутствует в whitelist (`CorsConfig`) — `403` с кодом `ORIGIN_NOT_ALLOWED`.
 
 Double-submit cookie pattern не используется — при `SameSite=Strict` и проверке `Origin` он избыточен. Требование к фронтенду: всегда отправлять `Origin` (браузер делает это автоматически для POST).
 
-### 6.7. Валидация токенов другими сервисами
+### 6.7. Валидация access JWT и передача контекста
 
-Access token подписан RS256; остальные сервисы валидируют подпись по публичному ключу:
+Access token подписан RS256. `auth` валидирует его на своих защищённых маршрутах. Gateway валидирует тот же пользовательский токен на защищённых маршрутах к `tasks` и другим не-auth сервисам, затем передаёт им [подписанный внутренний контекст](../gateway-access-auth.md) без Bearer.
 
 | Параметр | Значение |
 | --- | --- |
 | Публикация ключей | `GET /api/v1/auth/.well-known/jwks.json` (JWKS) |
 | Идентификация ключа | Заголовок `kid` в каждом JWT |
-| Кэширование | Сервисы кэшируют JWKS; при неизвестном `kid` — повторная загрузка |
+| Кэширование | Gateway кэширует JWKS; при неизвестном `kid` — повторная загрузка |
 | Хранение ключей | Пара RSA в конфигурации окружения (env / secret-хранилище). Ключи не попадают в Git |
 | Ротация | Новый ключ с новым `kid` добавляется в JWKS рядом со старым; старый удаляется после истечения всех выданных с ним токенов (≥ 7 дней) |
 
-Другие сервисы проверяют: подпись, `exp`, `iss`. Проверку blacklist и `tokens_valid_from` выполняет только сервис `auth` (refresh-флоу) — access token остаётся валидным до истечения (15 минут).
+Gateway и `auth` на своих маршрутах проверяют подпись, `exp`, `nbf` (если есть), `iss`, `type = access` и корректный `sub`. Не-auth downstream не разбирает пользовательский access JWT. `auth` также валидирует refresh JWT из cookie, Google ID token и одноразовые токены своих публичных сценариев. Проверку blacklist и `tokens_valid_from` для refresh выполняет `auth`; access token остаётся валидным до истечения (15 минут).
 
 ---
 
