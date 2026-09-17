@@ -17,6 +17,7 @@ paths:
       summary: Список и поиск активных веток
       description: |
         Только ветки пользователя, определённого Gateway по проверенному access token. Сортировка по createdAt, затем id по убыванию.
+        В ответе присутствуют parentId и depth для построения дерева F-5.1; существующие клиенты могут игнорировать эти поля.
         Поиск по части названия без учёта регистра; %, _ и другие символы запроса
         трактуются буквально. Пустой после нормализации q равен отсутствующему фильтру.
         cursor привязан к нормализованному q с сохранением регистра. Вставки до текущего курсора видны
@@ -67,7 +68,7 @@ paths:
               $ref: '#/components/schemas/BranchInput'
       responses:
         '201':
-          description: Ветка создана.
+          description: Ветка создана. Необязательный parentId поддерживает дочерние ветки F-5.1.
           headers:
             Location:
               description: Путь к созданной ветке.
@@ -116,7 +117,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/BranchInput'
+              $ref: '#/components/schemas/BranchRenameInput'
       responses:
         '200':
           description: Актуальная ветка.
@@ -142,7 +143,7 @@ paths:
       description: |
         Повторное архивирование собственной ветки возвращает 204 без изменения
         archivedAt и без нового события аудита. Чужая и отсутствующая ветка — 404.
-        В F-4 архивируется только ветка; F-5/F-6 добавят каскадное архивирование.
+        После F-5.1 архивируются все дочерние ветки, планы и задачи в одной транзакции.
       responses:
         '204':
           description: Ветка архивирована или уже была архивирована.
@@ -230,16 +231,39 @@ components:
           x-normalizedMaxCodePoints: 100
           description: После NFC и удаления краевых пробелов — 2–100 кодовых точек Unicode. minLength относится к исходной строке; семантические границы задают x-normalizedMinCodePoints и x-normalizedMaxCodePoints. Правило нормализации — в system-description.md, раздел 4.
           example: Спорт
+        parentId:
+          type: [string, 'null']
+          format: uuid
+          description: Необязательная активная родительская ветка. Вложенность ограничена 7 уровнями.
+    BranchRenameInput:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 2
+          x-normalizedMinCodePoints: 2
+          x-normalizedMaxCodePoints: 100
+          description: Новое название после NFC и удаления краевых пробелов.
+          example: Спорт
     Branch:
       type: object
       additionalProperties: false
-      required: [id, name, createdAt, updatedAt]
+      required: [id, name, parentId, depth, createdAt, updatedAt]
       properties:
         id:
           type: string
           format: uuid
         name:
           type: string
+        parentId:
+          type: [string, 'null']
+          format: uuid
+        depth:
+          type: integer
+          minimum: 1
+          maximum: 7
         createdAt:
           type: string
           format: date-time

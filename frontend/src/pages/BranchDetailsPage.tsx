@@ -10,6 +10,7 @@ import { isBranchId } from '../branches/branchValidation';
 import { BRANCH_STRINGS } from '../branches/strings';
 import AuthenticatedLayout from '../components/AuthenticatedLayout';
 import { WorkPlansList } from '../workPlans/WorkPlansList';
+import { removeNavigationTreeNode } from '../navigation/navigationTreeEvents';
 
 function isAbortError(error: unknown): boolean {
   return error instanceof Error && error.name === 'AbortError';
@@ -100,6 +101,7 @@ function BranchDetailsPage() {
     setApiError(null);
     try {
       await branchService.archiveBranch(branchId);
+      removeNavigationTreeNode(branchId);
       navigate('/branches', { replace: true, state: { notice: BRANCH_STRINGS.archiveSuccess } });
     } catch (error) {
       if (error instanceof ApiError && error.status === 404) {
@@ -153,7 +155,19 @@ function BranchDetailsPage() {
   }
 
   return (
-    <AuthenticatedLayout title={branch.name}>
+    <AuthenticatedLayout
+      title={branch.name}
+      headerActions={(
+        <button
+          ref={archiveButtonRef}
+          type="button"
+          className="btn btn-danger"
+          onClick={() => setShowArchiveDialog(true)}
+        >
+          {BRANCH_STRINGS.archiveAction}
+        </button>
+      )}
+    >
       <section className="settings-card branch-details-card">
         <ErrorDisplay error={apiError} />
 
@@ -173,14 +187,6 @@ function BranchDetailsPage() {
           <div className="branch-details-actions">
             <button type="button" className="btn btn-secondary" onClick={() => setShowRenameForm(true)}>
               {BRANCH_STRINGS.renameTitle}
-            </button>
-            <button
-              ref={archiveButtonRef}
-              type="button"
-              className="btn btn-danger"
-              onClick={() => setShowArchiveDialog(true)}
-            >
-              {BRANCH_STRINGS.archiveAction}
             </button>
           </div>
         )}

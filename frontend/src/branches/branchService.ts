@@ -3,6 +3,8 @@ import { authorizedRequest } from '../api/refreshInterceptor';
 export interface Branch {
   id: string;
   name: string;
+  parentId?: string | null;
+  depth?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -14,6 +16,7 @@ export interface BranchPage {
 
 export interface BranchInput {
   name: string;
+  parentId?: string | null;
 }
 
 export type BranchErrorCode =
@@ -48,10 +51,10 @@ export const branchService = {
     return authorizedRequest<BranchPage>(withQuery('/branches', params), { signal });
   },
 
-  createBranch(name: string): Promise<Branch> {
+  createBranch(name: string, parentId?: string | null): Promise<Branch> {
     return authorizedRequest<Branch>('/branches', {
       method: 'POST',
-      body: JSON.stringify({ name }),
+      body: JSON.stringify(parentId ? { name, parentId } : { name }),
     });
   },
 

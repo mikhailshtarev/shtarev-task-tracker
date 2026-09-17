@@ -15,13 +15,15 @@ public class BranchService {
     private final BranchPageReader pages;
     private final BranchAudit audit;
     private final WorkPlanCascade workPlans;
+    private final BranchHierarchy hierarchy;
 
     public BranchService(BranchRepository branches, BranchPageReader pages, BranchAudit audit,
-                         WorkPlanCascade workPlans) {
+                         WorkPlanCascade workPlans, BranchHierarchy hierarchy) {
         this.branches = branches;
         this.pages = pages;
         this.audit = audit;
         this.workPlans = workPlans;
+        this.hierarchy = hierarchy;
     }
 
     @Transactional(readOnly = true)
@@ -39,8 +41,10 @@ public class BranchService {
     @Transactional
     public BranchResponse create(UUID userId, BranchInput input) {
         String name = BranchText.name(input == null ? null : input.name());
+        UUID parentId = input.parentId();
+        short depth = parentId == null ? 1 : hierarchy.lockActiveParent(userId, parentId);
         Instant now = now();
-        Branch branch = branches.saveAndFlush(new Branch(userId, name, now));
+        Branch branch = branches.saveAndFlush(new Branch(userId, name, parentId, depth, now));
         audit.record(userId, branch.getId(), "created", "name", null, name, now);
         return BranchResponse.from(branch);
     }
@@ -54,6 +58,9 @@ public class BranchService {
     @Transactional
     public BranchResponse rename(UUID userId, UUID id, BranchInput input) {
         String name = BranchText.name(input == null ? null : input.name());
+        if (input.parentProvided()) {
+            throw ApiFailure.validation("parentId", "Изменение родительского проекта недоступно");
+        }
         Branch branch = branches.lockOwned(id, userId).orElseThrow(ApiFailure::notFound);
         if (branch.getArchivedAt() != null) throw ApiFailure.notFound();
         if (!branch.getName().equals(name)) {
@@ -71,8 +78,14 @@ public class BranchService {
         if (branch.getArchivedAt() == null) {
             Instant now = now();
             branch.archive(now);
-            workPlans.archiveActive(userId, id, now);
+            branches.flush();
+            List<UUID> subtree = hierarchy.lockSubtree(userId, id);
+            List<UUID> changed = hierarchy.archiveActiveDescendants(subtree, id, now);
+            workPlans.archiveActive(userId, subtree, now);
             audit.record(userId, id, "archived", "archivedAt", null, now.toString(), now);
+            for (UUID descendantId : changed) {
+                audit.record(userId, descendantId, "archived", "archivedAt", null, now.toString(), now);
+            }
         }
     }
 

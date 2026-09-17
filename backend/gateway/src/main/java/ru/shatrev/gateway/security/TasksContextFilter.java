@@ -34,7 +34,7 @@ public class TasksContextFilter implements GlobalFilter, Ordered {
         UUID userId = exchange.getAttribute(JwtValidationFilter.USER_ID_ATTRIBUTE);
         String path = exchange.getRequest().getURI().getRawPath();
         if (userId == null || !(path.startsWith("/api/v1/branches") || path.startsWith("/api/v1/tasks")
-                || path.startsWith("/api/v1/work-plans"))) {
+                || path.startsWith("/api/v1/work-plans") || path.equals("/api/v1/navigation/tree"))) {
             return chain.filter(exchange);
         }
         String timestamp = Long.toString(Instant.now().getEpochSecond());

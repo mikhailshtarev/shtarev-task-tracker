@@ -1,6 +1,7 @@
 package ru.shatrev.tasks.workplan;
 
-import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Component;
 
 import java.sql.Timestamp;
@@ -10,20 +11,25 @@ import java.util.UUID;
 
 @Component
 public class WorkPlanCascade {
-    private final JdbcTemplate jdbc;
+    private final NamedParameterJdbcTemplate jdbc;
     private final WorkPlanAudit audit;
 
-    public WorkPlanCascade(JdbcTemplate jdbc, WorkPlanAudit audit) {
+    public WorkPlanCascade(NamedParameterJdbcTemplate jdbc, WorkPlanAudit audit) {
         this.jdbc = jdbc;
         this.audit = audit;
     }
 
     /** Called only after the owning branch has been locked inside its archive transaction. */
     public void archiveActive(UUID userId, UUID branchId, Instant now) {
-        List<UUID> changed = jdbc.query("UPDATE work_plans SET archived_at = ?, updated_at = ? "
-                        + "WHERE branch_id = ? AND archived_at IS NULL RETURNING id",
-                (rs, row) -> rs.getObject("id", UUID.class),
-                Timestamp.from(now), Timestamp.from(now), branchId);
+        archiveActive(userId, List.of(branchId), now);
+    }
+
+    public void archiveActive(UUID userId, List<UUID> branchIds, Instant now) {
+        if (branchIds.isEmpty()) return;
+        List<UUID> changed = jdbc.query("UPDATE work_plans SET archived_at = :now, updated_at = :now "
+                        + "WHERE branch_id IN (:ids) AND archived_at IS NULL RETURNING id",
+                new MapSqlParameterSource().addValue("now", Timestamp.from(now)).addValue("ids", branchIds),
+                (rs, row) -> rs.getObject("id", UUID.class));
         audit.archived(userId, changed, now);
     }
 }

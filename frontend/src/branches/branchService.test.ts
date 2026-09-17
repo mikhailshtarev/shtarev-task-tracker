@@ -45,4 +45,21 @@ describe('branchService', () => {
     expect(JSON.parse(calls[0].body ?? '{}')).toEqual({ name: 'Спорт' });
     expect(calls[1].url).toContain(`/branches/${branchId}/archive`);
   });
+
+  it('отправляет parentId только для дочернего проекта', async () => {
+    setAccessToken('access-token');
+    const parentId = '11111111-1111-4111-8111-111111111111';
+    const { calls } = stubFetch([
+      {
+        method: 'POST',
+        path: '/branches',
+        status: 201,
+        body: { id: '22222222-2222-4222-8222-222222222222', name: 'Проект X', parentId, depth: 2 },
+      },
+    ]);
+
+    await branchService.createBranch('Проект X', parentId);
+
+    expect(JSON.parse(calls[0].body ?? '{}')).toEqual({ name: 'Проект X', parentId });
+  });
 });

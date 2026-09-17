@@ -68,6 +68,13 @@ class GatewayAccessIntegrationTest {
                 exchange.getResponseBody().write(body);
                 exchange.close();
             });
+            DOWNSTREAM.createContext("/api/v1/navigation/tree", exchange -> {
+                LAST_HEADERS.set(exchange.getRequestHeaders());
+                byte[] body = "internal rejection".getBytes(StandardCharsets.UTF_8);
+                exchange.sendResponseHeaders(401, body.length);
+                exchange.getResponseBody().write(body);
+                exchange.close();
+            });
             DOWNSTREAM.createContext("/api/v1/auth/me", exchange -> {
                 LAST_HEADERS.set(exchange.getRequestHeaders());
                 byte[] body = "auth".getBytes(StandardCharsets.UTF_8);
@@ -136,7 +143,7 @@ class GatewayAccessIntegrationTest {
     void workPlanAndNestedRoutesCarryVerifiedContext() throws Exception {
         UUID user = UUID.randomUUID();
         for (String path : new String[]{"/api/v1/work-plans/" + UUID.randomUUID(),
-                "/api/v1/branches/" + UUID.randomUUID() + "/plans"}) {
+                "/api/v1/branches/" + UUID.randomUUID() + "/plans", "/api/v1/navigation/tree"}) {
             LAST_HEADERS.set(null);
             var response = call(path, token(user, "access"));
             assertEquals(502, response.statusCode());

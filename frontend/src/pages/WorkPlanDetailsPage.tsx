@@ -10,6 +10,7 @@ import { WorkPlanForm } from '../workPlans/WorkPlanForm';
 import { toWorkPlanApiError } from '../workPlans/workPlanErrors';
 import { workPlanService, type WorkPlan } from '../workPlans/workPlanService';
 import { WORK_PLAN_STRINGS } from '../workPlans/strings';
+import { removeNavigationTreeNode } from '../navigation/navigationTreeEvents';
 
 function isAbortError(error: unknown): boolean {
   return error instanceof Error && error.name === 'AbortError';
@@ -95,6 +96,7 @@ function WorkPlanDetailsPage() {
     setApiError(null);
     try {
       await workPlanService.archiveWorkPlan(planId);
+      removeNavigationTreeNode(planId);
       navigate(`/branches/${plan.branchId}`, {
         replace: true,
         state: { notice: WORK_PLAN_STRINGS.archiveSuccess },
@@ -151,7 +153,19 @@ function WorkPlanDetailsPage() {
   }
 
   return (
-    <AuthenticatedLayout title={plan.name}>
+    <AuthenticatedLayout
+      title={plan.name}
+      headerActions={(
+        <button
+          ref={archiveButtonRef}
+          type="button"
+          className="btn btn-danger"
+          onClick={() => setShowArchiveDialog(true)}
+        >
+          {WORK_PLAN_STRINGS.archiveAction}
+        </button>
+      )}
+    >
       <section className="settings-card work-plan-details-card">
         <p className="work-plan-parent">
           <span>{WORK_PLAN_STRINGS.parentBranchLabel}: </span>
@@ -178,14 +192,6 @@ function WorkPlanDetailsPage() {
           <div className="branch-details-actions">
             <button type="button" className="btn btn-secondary" onClick={() => setShowRenameForm(true)}>
               {WORK_PLAN_STRINGS.renameTitle}
-            </button>
-            <button
-              ref={archiveButtonRef}
-              type="button"
-              className="btn btn-danger"
-              onClick={() => setShowArchiveDialog(true)}
-            >
-              {WORK_PLAN_STRINGS.archiveAction}
             </button>
           </div>
         )}

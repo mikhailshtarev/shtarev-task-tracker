@@ -21,6 +21,12 @@ public class Branch {
     @Column(nullable = false, length = 100)
     private String name;
 
+    @Column(name = "parent_id")
+    private UUID parentId;
+
+    @Column(nullable = false)
+    private short depth;
+
     @Column(name = "archived_at")
     private Instant archivedAt;
 
@@ -34,9 +40,15 @@ public class Branch {
     }
 
     public Branch(UUID userId, String name, Instant now) {
+        this(userId, name, null, (short) 1, now);
+    }
+
+    public Branch(UUID userId, String name, UUID parentId, short depth, Instant now) {
         this.id = UUID.randomUUID();
         this.userId = userId;
         this.name = name;
+        this.parentId = parentId;
+        this.depth = depth;
         this.createdAt = now;
         this.updatedAt = now;
     }
@@ -44,6 +56,8 @@ public class Branch {
     public UUID getId() { return id; }
     public UUID getUserId() { return userId; }
     public String getName() { return name; }
+    public UUID getParentId() { return parentId; }
+    public short getDepth() { return depth; }
     public Instant getArchivedAt() { return archivedAt; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
